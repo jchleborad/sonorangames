@@ -149,7 +149,7 @@
     if (!status) return;
     if (draftDirty) {
       status.className = 'card-save-status is-draft';
-      status.innerHTML = '<strong>Draft saved on this device</strong><span>Submit when your card is complete.</span>';
+      status.innerHTML = '<strong>Draft saved on this device</strong><span>Save your picks anytime. Finish the rest before each game locks.</span>';
     } else if (card.submitted_at_utc) {
       status.className = 'card-save-status is-submitted';
       status.innerHTML = `<strong>Card submitted</strong><span>${escapeHtml(formatSavedTime(card.submitted_at_utc))} local time</span>`;
@@ -260,7 +260,7 @@
     else if (missing) needed = `${missing} game pick${missing === 1 ? '' : 's'}.`;
     else if (!tieValue) needed = 'Your tiebreaker score.';
     warning.innerHTML = ready ? `<strong>Ready for kickoff</strong><p>All ${total} games and your tiebreaker are complete.</p>` : `<strong>Still needed</strong><p>${needed}</p>`;
-    document.querySelector('[data-submit-picks]').textContent = ready ? 'Submit my picks →' : 'Finish my card →';
+    document.querySelector('[data-submit-picks]').textContent = ready ? 'Submit my picks →' : selected > 0 ? 'Save my picks →' : 'Start my card →';
   }
 
   function selectTeam(gameElement, button) {
@@ -292,35 +292,71 @@
   async function submitPicks() {
     const button = document.querySelector('[data-submit-picks]');
     const tiebreaker = document.querySelector('[data-tiebreaker]');
-    const missingElement = nextMissingGame();
-    if (missingElement) return guideTo(missingElement, 'This matchup still needs your pick.');
-    if (!tiebreaker.value.trim()) {
-      const cardElement = document.querySelector('[data-tiebreaker-card]');
-      guideTo(cardElement, 'One last step—enter your tiebreaker.');
-      window.setTimeout(() => tiebreaker.focus({ preventScroll: true }), 450);
+
+    const selectedOpenGames = card.games.filter(
+      game => !game.locked && Boolean(game.pick_team)
+    );
+
+    if (!selectedOpenGames.length) {
+      const missingElement = nextMissingGame();
+
+      if (missingElement) {
+        return guideTo(
+          missingElement,
+          'Make at least one pick before saving your card.'
+        );
+      }
+
       return;
     }
+
     button.disabled = true;
     button.textContent = 'Saving…';
+
     try {
+      const tieValue = tiebreaker.value.trim();
+
       const payload = {
-        action: 'savePicks', api_version: API_VERSION, competition_id: COMPETITION_ID,
-        season: card.season, week: card.week, player_token: playerToken,
-        submission_id: createSubmissionId(), client_submitted_at_utc: new Date().toISOString(),
-        submission_type: 'CARD_SAVE', tiebreaker: Number(tiebreaker.value),
-        picks: card.games.filter(game => !game.locked).map(game => ({ game_id: game.game_id, pick_team: game.pick_team }))
+        action: 'savePicks',
+        api_version: API_VERSION,
+        competition_id: COMPETITION_ID,
+        season: card.season,
+        week: card.week,
+        player_token: playerToken,
+        submission_id: createSubmissionId(),
+        client_submitted_at_utc: new Date().toISOString(),
+        submission_type: 'CARD_SAVE',
+        tiebreaker: tieValue === '' ? '' : Number(tieValue),
+        picks: selectedOpenGames.map(game => ({
+          game_id: game.game_id,
+          pick_team: game.pick_team
+        }))
       };
+
       const result = await saveWeeklyCard(payload);
-      if (!result.ok) throw new Error(apiErrorMessage(result, 'Your picks could not be saved.'));
-      card.submitted_at_utc = result.server_time_utc || new Date().toISOString();
+
+      if (!result.ok) {
+        throw new Error(
+          apiErrorMessage(result, 'Your picks could not be saved.')
+        );
+      }
+
+      card.submitted_at_utc =
+        result.server_time_utc || new Date().toISOString();
+
       clearDraft();
       updateSaveStatus();
+
       const confirmation = document.querySelector('[data-confirmation]');
       confirmation.hidden = false;
       document.body.style.overflow = 'hidden';
       confirmation.querySelector('[data-close-confirmation]').focus();
+
     } catch (error) {
-      showInlineError(error.message, document.querySelector('[data-submit-card]'));
+      showInlineError(
+        error.message,
+        document.querySelector('[data-submit-card]')
+      );
     } finally {
       button.disabled = !card.picks_open;
       updateState();

@@ -194,6 +194,29 @@
     return 'OT';
   }
 
+  function formatLiveClock(game) {
+    const rawClock = String(game.clock || '').trim();
+
+    if (!rawClock || rawClock === '0:00') return 'Live';
+
+    const match = rawClock.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return 'Live';
+
+    const minutes = Number(match[1]);
+    const seconds = Number(match[2]);
+    const quarter = Number(game.quarter);
+
+    if (!Number.isInteger(minutes) || !Number.isInteger(seconds) || seconds < 0 || seconds > 59) {
+      return 'Live';
+    }
+
+    if (quarter >= 1 && quarter <= 4 && (minutes > 15 || (minutes === 15 && seconds > 0))) {
+      return 'Live';
+    }
+
+    return `${escapeHtml(rawClock)} remaining`;
+  }
+
   function formatSyncStatus(isoValue) {
     if (!isoValue) {
       return { text: 'Score sync time unavailable', stale: true };
@@ -354,9 +377,7 @@
   function liveCardHtml(game) {
     const quarter = formatQuarter(game.quarter);
     const statusText = quarter ? `Live · ${quarter}` : 'Live';
-    const clockText = game.clock && game.clock !== '0:00'
-      ? `${escapeHtml(game.clock)} remaining`
-      : 'Live';
+    const clockText = formatLiveClock(game);
 
     return `
       <article class="card game-card game-card-live" data-game-id="${escapeHtml(game.game_id)}">
