@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Live NFL scores for Sonoran Games."><title>Live Scores · Sonoran Games</title>
-  <link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/assets/css/tokens.css"><link rel="stylesheet" href="/assets/css/components.css"><link rel="stylesheet" href="/assets/css/site.css"><link rel="stylesheet" href="/assets/css/scoreboard-who-picked-who.css">
+  <link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/assets/css/tokens.css"><link rel="stylesheet" href="/assets/css/components.css"><link rel="stylesheet" href="/assets/css/site.css"><link rel="stylesheet" href="/assets/css/scoreboard-who-picked-who.css"><link rel="stylesheet" href="/assets/css/scoreboard-player-scoreboard.css">
 </head>
 <body>
   <header class="site-header"><div class="container nav-wrap"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">☰</button><nav class="nav-links" id="site-nav" data-nav-links><a href="/">Home</a><a href="/scoreboard.html" aria-current="page">Scores</a><a href="/picks.html">Picks</a><a href="/standings.html">Standings</a><a href="/winners.html">Winners</a><a href="/rules.html">Rules</a></nav></div></header>
@@ -13,10 +13,13 @@
           <p class="eyebrow" data-scoreboard-season>2026 Regular Season</p>
           <h1 class="display scoreboard-title" data-scoreboard-title>Week 1 scoreboard</h1>
         </div>
-        <div class="week-nav" aria-label="Week navigation">
-          <button type="button" data-week-prev>‹ Previous</button>
-          <button type="button" data-week-current disabled>Week 1</button>
-          <button type="button" data-week-next>Next ›</button>
+        <div class="scoreboard-actions">
+          <div class="week-nav" aria-label="Week navigation">
+            <button type="button" data-week-prev>‹ Previous</button>
+            <button type="button" data-week-current disabled>Week 1</button>
+            <button type="button" data-week-next>Next ›</button>
+          </div>
+          <button class="button player-scoreboard-trigger" type="button" data-player-scoreboard-open>Player Scoreboard</button>
         </div>
       </div>
 
@@ -57,6 +60,36 @@
 
     <div class="scoreboard-message" data-scoreboard-message hidden></div>
   </div></main>
+
+  <div class="player-scoreboard-overlay" data-player-scoreboard hidden>
+    <section class="player-scoreboard-modal" role="dialog" aria-modal="true" aria-labelledby="player-scoreboard-title">
+      <button class="player-scoreboard-close" type="button" data-player-scoreboard-close aria-label="Close Player Scoreboard">×</button>
+      <div class="player-scoreboard-heading">
+        <p class="eyebrow">Player Scoreboard</p>
+        <h2 class="display" id="player-scoreboard-title" data-player-scoreboard-title>Week 1 Live Scoreboard</h2>
+        <p data-player-scoreboard-subtitle>0 of 16 games Final</p>
+      </div>
+      <div class="player-scoreboard-scroll-cue">Swipe to see all stats →</div>
+      <div class="player-scoreboard-table-shell">
+        <table class="player-scoreboard-table">
+          <thead>
+            <tr>
+              <th scope="col">Player</th>
+              <th scope="col">Correct</th>
+              <th scope="col">Incorrect</th>
+              <th scope="col">Pending</th>
+              <th scope="col" data-player-scoreboard-rank-heading>Week 1 Rank</th>
+            </tr>
+          </thead>
+          <tbody data-player-scoreboard-body>
+            <tr><td colspan="5" class="player-scoreboard-empty">Loading player scores…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="player-scoreboard-note">Ranks are provisional until all games are final.</p>
+    </section>
+  </div>
+
   <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><div class="footer-copy"><p>Friendly competition. Serious bragging rights.</p><p>© <span data-copyright-year>2026</span> Project605 LLC. All rights reserved.</p><p>Sonoran Games, including its original content, design, and software, may not be reproduced without permission.</p></div></div></footer>
   <script src="/assets/js/navigation.js"></script><script src="/assets/js/scoreboard.js"></script>
 </body></html>
