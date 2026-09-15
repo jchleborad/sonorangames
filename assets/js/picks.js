@@ -147,16 +147,60 @@
   function updateSaveStatus() {
     const status = document.querySelector('[data-save-status]');
     if (!status) return;
+
     if (draftDirty) {
       status.className = 'card-save-status is-draft';
-      status.innerHTML = '<strong>Draft saved on this device</strong><span>Save your picks anytime. Finish the rest before each game locks.</span>';
-    } else if (card.submitted_at_utc) {
-      status.className = 'card-save-status is-submitted';
-      status.innerHTML = `<strong>Card submitted</strong><span>${escapeHtml(formatSavedTime(card.submitted_at_utc))} local time</span>`;
-    } else {
-      status.className = 'card-save-status';
-      status.innerHTML = '<strong>Not submitted yet</strong><span>Your changes will be saved as a draft on this device.</span>';
+      status.innerHTML =
+        '<strong>Draft saved on this device</strong>' +
+        '<span>Save your picks anytime. Finish the rest before each game locks.</span>';
+      return;
     }
+
+    if (card.submitted_at_utc) {
+      const total = card.games.length;
+      const selected = selectedCount();
+      const remainingGames = Math.max(total - selected, 0);
+
+      const tiebreakerInput = document.querySelector('[data-tiebreaker]');
+      const tiebreakerValue = tiebreakerInput
+        ? tiebreakerInput.value.trim()
+        : String(card.tiebreaker ?? '').trim();
+
+      const needsTiebreaker = tiebreakerValue === '';
+      const cardComplete = remainingGames === 0 && !needsTiebreaker;
+
+      status.className = 'card-save-status is-submitted';
+
+      if (cardComplete) {
+        status.innerHTML =
+          '<strong>Card submitted</strong>' +
+          `<span>All ${total} games and your tiebreaker are complete.</span>`;
+        return;
+      }
+
+      let remainingMessage = '';
+
+      if (remainingGames > 0 && needsTiebreaker) {
+        remainingMessage =
+          `You still have ${remainingGames} game${remainingGames === 1 ? '' : 's'} ` +
+          'and your tiebreaker remaining.';
+      } else if (remainingGames > 0) {
+        remainingMessage =
+          `You still have ${remainingGames} game${remainingGames === 1 ? '' : 's'} remaining.`;
+      } else {
+        remainingMessage = 'You still have your tiebreaker remaining.';
+      }
+
+      status.innerHTML =
+        '<strong>Picks saved</strong>' +
+        `<span>${escapeHtml(remainingMessage)}</span>`;
+      return;
+    }
+
+    status.className = 'card-save-status';
+    status.innerHTML =
+      '<strong>Not submitted yet</strong>' +
+      '<span>Your changes will be saved as a draft on this device.</span>';
   }
 
   function renderTeam(game, side) {
