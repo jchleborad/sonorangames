@@ -37,39 +37,60 @@
     </section>
 
     <div class="container results-layout" id="weekly-results-panel" role="tabpanel" aria-labelledby="weekly-results-tab" data-standings-panel="weekly">
-      <section class="results-toolbar" aria-label="Week 1 results status">
+      <section class="results-toolbar" aria-label="Weekly results status">
         <div>
-          <p class="eyebrow" data-weekly-eyebrow>Opening week</p>
-          <h2 class="display">Week 1 Results</h2>
-          <p data-weekly-toolbar-copy>Results begin after Week 1 games are graded.</p>
+          <p class="eyebrow" data-weekly-eyebrow>Weekly results</p>
+          <h2 class="display" data-weekly-heading>Loading results…</h2>
+          <p data-weekly-toolbar-copy>Checking the latest completed Sonoran Games week.</p>
         </div>
-        <span class="status status-upcoming" data-weekly-status>Coming soon</span>
+        <span class="status status-upcoming" data-weekly-status>Loading</span>
       </section>
 
-      <section class="weekly-winner card">
+      <section class="weekly-winner card" data-weekly-winner-card>
         <div class="winner-emblem" aria-hidden="true">★</div>
         <div class="weekly-winner-copy">
           <p class="eyebrow">Weekly champion</p>
-          <h2 class="display" data-weekly-title>The first one is up for grabs.</h2>
-          <p class="winner-lead" data-weekly-lead>Week 1 will crown our first 2026 winner.</p>
-          <p data-weekly-copy>Once Week 1 is complete and graded, the champion and winning tiebreaker will appear here.</p>
+          <h2 class="display" data-weekly-title>Loading the winner…</h2>
+          <p class="winner-lead" data-weekly-lead>The latest graded week is on the way.</p>
+          <p data-weekly-copy></p>
         </div>
       </section>
 
       <section class="card results-table-card">
         <div class="section-heading results-heading">
           <div>
-            <p class="eyebrow">Week 1 leaderboard</p>
+            <p class="eyebrow" data-weekly-table-eyebrow>Weekly leaderboard</p>
             <h2 class="display">How everyone finished</h2>
           </div>
-          <span class="status status-upcoming" data-weekly-table-status>Waiting for results</span>
+          <span class="status status-upcoming" data-weekly-table-status>Loading</span>
         </div>
-        <div class="week-story" style="margin-top:0">
-          <div>
-            <p class="eyebrow">Week 1</p>
-            <h2 class="display" data-weekly-placeholder-title>Results will appear here.</h2>
-            <p data-weekly-placeholder-copy>The leaderboard will populate after Week 1 games are graded.</p>
+
+        <p class="season-scroll-cue" data-weekly-table-scroll-cue>Swipe to see all stats →</p>
+
+        <div data-weekly-table-state>
+          <div class="week-story" style="margin-top:0">
+            <div>
+              <p class="eyebrow">Weekly results</p>
+              <h2 class="display">Loading leaderboard…</h2>
+              <p>We’re retrieving the latest graded results.</p>
+            </div>
           </div>
+        </div>
+
+        <div data-weekly-table-scroll hidden style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+          <table class="standings" aria-label="Weekly Results leaderboard">
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Player</th>
+                <th scope="col">Correct</th>
+                <th scope="col">Incorrect</th>
+                <th scope="col">TB Guess</th>
+                <th scope="col">TB Diff</th>
+              </tr>
+            </thead>
+            <tbody data-weekly-table-body></tbody>
+          </table>
         </div>
       </section>
     </div>
@@ -79,18 +100,18 @@
         <div>
           <p class="eyebrow" data-season-eyebrow>2026 season</p>
           <h2 class="display">2026 Season Standings</h2>
-          <p data-season-toolbar-copy>Standings begin with Week 1.</p>
+          <p data-season-toolbar-copy>The 2026 season is underway. Rankings will update as results are graded.</p>
         </div>
-        <span class="status status-upcoming" data-season-status>Coming soon</span>
+        <span class="status status-upcoming" data-season-status>In progress</span>
       </section>
 
       <section class="card season-leader">
         <div class="winner-emblem" aria-hidden="true">★</div>
         <div class="season-leader-copy">
           <p class="eyebrow">Season race</p>
-          <h2 class="display" data-season-title>The race begins Week 1.</h2>
-          <p class="winner-lead" data-season-lead>No leader yet.</p>
-          <p data-season-copy>Season rankings will appear as completed games are graded.</p>
+          <h2 class="display" data-season-title>The season race is underway.</h2>
+          <p class="winner-lead" data-season-lead>Rankings begin with Week 1.</p>
+          <p data-season-copy>The first season leader will appear as completed results are graded.</p>
         </div>
       </section>
 
@@ -108,19 +129,44 @@
       <section class="card results-table-card season-table-card">
         <div class="section-heading results-heading">
           <div><p class="eyebrow">Overall leaderboard</p><h2 class="display">The race for the season</h2></div>
-          <span class="status status-upcoming" data-season-table-status>Waiting for results</span>
+          <span class="status status-upcoming" data-season-table-status>Loading</span>
         </div>
-        <div class="week-story" style="margin-top:0">
-          <div>
-            <p class="eyebrow">Season standings</p>
-            <h2 class="display" data-season-placeholder-title>Standings will appear here.</h2>
-            <p data-season-placeholder-copy>The first rankings will populate after Week 1 results are graded.</p>
+
+        <p class="season-scroll-cue" data-season-table-scroll-cue>Swipe to see all stats →</p>
+
+        <div data-season-table-state>
+          <div class="week-story" style="margin-top:0">
+            <div>
+              <p class="eyebrow">Season standings</p>
+              <h2 class="display">Loading leaderboard…</h2>
+              <p>We’re retrieving the current 2026 season standings.</p>
+            </div>
           </div>
+        </div>
+
+        <div data-season-table-scroll hidden style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+          <table class="standings" aria-label="2026 Season Standings leaderboard">
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Player</th>
+                <th scope="col">Weeks Won</th>
+                <th scope="col">Correct</th>
+                <th scope="col">Incorrect</th>
+                <th scope="col">Season Score</th>
+              </tr>
+            </thead>
+            <tbody data-season-table-body></tbody>
+          </table>
         </div>
       </section>
 
       <section class="card week-story season-snapshot">
-        <div><p class="eyebrow">Season snapshot</p><h2 class="display" data-snapshot-title>Ready for Week 1</h2><p data-snapshot-copy>Season stats will build as games are completed and graded.</p></div>
+        <div>
+          <p class="eyebrow">Season snapshot</p>
+          <h2 class="display" data-snapshot-title>Loading season snapshot…</h2>
+          <p data-snapshot-copy>Season stats are being loaded from verified graded results.</p>
+        </div>
       </section>
     </div>
   </main>
@@ -128,38 +174,5 @@
   <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><div class="footer-copy"><p>Friendly competition. Serious bragging rights.</p><p>© <span data-copyright-year>2026</span> Project605 LLC. All rights reserved.</p><p>Sonoran Games, including its original content, design, and software, may not be reproduced without permission.</p></div></div></footer>
   <script src="/assets/js/navigation.js"></script>
   <script src="/assets/js/standings.js"></script>
-  <script>
-    (() => {
-      const seasonStart = new Date('2026-09-10T00:20:00Z');
-      if (Date.now() < seasonStart.getTime()) return;
-
-      const set = (selector, text) => {
-        const el = document.querySelector(selector);
-        if (el) el.textContent = text;
-      };
-
-      set('[data-weekly-eyebrow]', 'Week 1');
-      set('[data-weekly-toolbar-copy]', 'Week 1 is underway. Results will appear as games are completed and graded.');
-      set('[data-weekly-status]', 'In progress');
-      set('[data-weekly-title]', 'Week 1 is underway.');
-      set('[data-weekly-lead]', 'Our first champion is being decided.');
-      set('[data-weekly-copy]', 'The Week 1 champion and winning tiebreaker will appear here after final grading.');
-      set('[data-weekly-table-status]', 'In progress');
-      set('[data-weekly-placeholder-title]', 'Week 1 results are in progress.');
-      set('[data-weekly-placeholder-copy]', 'The final leaderboard will appear after Week 1 games are graded.');
-
-      set('[data-season-eyebrow]', '2026 season');
-      set('[data-season-toolbar-copy]', 'The 2026 season is underway. Rankings will update as results are graded.');
-      set('[data-season-status]', 'In progress');
-      set('[data-season-title]', 'The season race is underway.');
-      set('[data-season-lead]', 'Rankings begin with Week 1.');
-      set('[data-season-copy]', 'The first season leader will appear as completed results are graded.');
-      set('[data-season-table-status]', 'In progress');
-      set('[data-season-placeholder-title]', 'Season standings are underway.');
-      set('[data-season-placeholder-copy]', 'The first rankings will appear after Week 1 results are graded.');
-      set('[data-snapshot-title]', 'Week 1 underway');
-      set('[data-snapshot-copy]', 'Season stats will build as games are completed and graded.');
-    })();
-  </script>
 </body>
 </html>
