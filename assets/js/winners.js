@@ -34,40 +34,91 @@
     "'": '&#39;'
   })[character]);
 
-  function buildApiUrl(action, extra = {}) {
+  function buildWeeklyResultsUrl(week = null) {
     const url = new URL(API_URL);
-    url.searchParams.set('action', action);
+    url.searchParams.set('action', 'getWeeklyResults');
     url.searchParams.set('api_version', API_VERSION);
     url.searchParams.set('competition_id', COMPETITION_ID);
     url.searchParams.set('season', String(SEASON));
 
-    Object.entries(extra).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.set(key, String(value));
-      }
-    });
+    if (week !== null && week !== undefined && week !== '') {
+      url.searchParams.set('week', String(week));
+    }
 
     return url.toString();
   }
 
-  async function fetchJson(action, extra = {}) {
-    const response = await fetch(buildApiUrl(action, extra), {
+  async function fetchWeeklyResults(week = null) {
+    const url = buildWeeklyResultsUrl(week);
+    let response = await fetch(url, {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow'
     });
 
+    if (response.status === 404) {
+      await new Promise(resolve => setTimeout(resolve, 350));
+      response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        redirect: 'follow'
+      });
+    }
+
     if (!response.ok) {
-      throw new Error(`${action} request failed with HTTP ${response.status}.`);
+      throw new Error(`Weekly results request failed with HTTP ${response.status}.`);
     }
 
     const payload = await response.json();
 
-    if (!payload || payload.ok !== true) {
+    if (!payload || payload.ok !== true || !Array.isArray(payload.players)) {
       throw new Error(
         payload && payload.message
           ? payload.message
-          : `${action} returned an invalid response.`
+          : 'Weekly results returned an invalid response.'
+      );
+    }
+
+    return payload;
+  }
+
+  function buildSeasonStandingsUrl() {
+    const url = new URL(API_URL);
+    url.searchParams.set('action', 'getSeasonStandings');
+    url.searchParams.set('api_version', API_VERSION);
+    url.searchParams.set('competition_id', COMPETITION_ID);
+    url.searchParams.set('season', String(SEASON));
+    return url.toString();
+  }
+
+  async function fetchSeasonStandings() {
+    const url = buildSeasonStandingsUrl();
+    let response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      redirect: 'follow'
+    });
+
+    if (response.status === 404) {
+      await new Promise(resolve => setTimeout(resolve, 350));
+      response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        redirect: 'follow'
+      });
+    }
+
+    if (!response.ok) {
+      throw new Error(`Season standings request failed with HTTP ${response.status}.`);
+    }
+
+    const payload = await response.json();
+
+    if (!payload || payload.ok !== true || !Array.isArray(payload.players)) {
+      throw new Error(
+        payload && payload.message
+          ? payload.message
+          : 'Season standings returned an invalid response.'
       );
     }
 
@@ -829,18 +880,22 @@
 
   async function initializeWinners() {
     try {
-      const [latest, season] = await Promise.all([
-        fetchJson('getWeeklyResults'),
-        fetchJson('getSeasonStandings')
-      ]);
+      // Keep these calls intentionally sequential. Google Apps Script occasionally
+      // returns a transient 404 when several redirected web-app requests arrive together.
+      const latest = await fetchWeeklyResults();
+      const season = await fetchSeasonStandings();
 
       const latestWeek = Number(latest.week || 0);
+      const historyResults = [];
 
-      const historyResults = await Promise.all(
-        Array.from({ length: latestWeek }, (_, index) =>
-          fetchJson('getWeeklyResults', { week: index + 1 })
-        )
-      );
+      for (let week = 1; week <= latestWeek; week += 1) {
+        if (week === latestWeek) {
+          // Reuse the latest payload instead of requesting the same week twice.
+          historyResults.push(latest);
+        } else {
+          historyResults.push(await fetchWeeklyResults(week));
+        }
+      }
 
       renderLatestChampion(latest);
       renderChampionsWall(historyResults);
