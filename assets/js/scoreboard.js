@@ -10,8 +10,15 @@
 
   const params = new URLSearchParams(window.location.search);
   const requestedWeek = positiveInteger(params.get('week'));
-  let currentSeason = positiveInteger(params.get('season')) || DEFAULT_SEASON;
-  let currentWeek = requestedWeek ? clampWeek(requestedWeek) : MIN_WEEK;
+
+  let currentSeason =
+    positiveInteger(params.get('season')) ||
+    DEFAULT_SEASON;
+
+  let currentWeek =
+    requestedWeek
+      ? clampWeek(requestedWeek)
+      : MIN_WEEK;
   let scoreboard = null;
   let whoPickedWho = null;
   let loading = false;
@@ -24,6 +31,13 @@
   const refreshButton = document.querySelector('[data-refresh]');
   const freshness = document.querySelector('[data-freshness]');
   const message = document.querySelector('[data-scoreboard-message]');
+  const playerScoreboardButton = document.querySelector('[data-player-scoreboard-open]');
+  const playerScoreboardOverlay = document.querySelector('[data-player-scoreboard]');
+  const playerScoreboardCloseButton = document.querySelector('[data-player-scoreboard-close]');
+  const playerScoreboardTitle = document.querySelector('[data-player-scoreboard-title]');
+  const playerScoreboardSubtitle = document.querySelector('[data-player-scoreboard-subtitle]');
+  const playerScoreboardRankHeading = document.querySelector('[data-player-scoreboard-rank-heading]');
+  const playerScoreboardBody = document.querySelector('[data-player-scoreboard-body]');
 
   const summaryElements = {
     live: document.querySelector('[data-summary-live]'),
@@ -77,6 +91,7 @@
 
   function buildApiUrl(action, week = null) {
     const url = new URL(API_URL);
+
     url.searchParams.set('action', action);
     url.searchParams.set('api_version', API_VERSION);
     url.searchParams.set('competition_id', COMPETITION_ID);
@@ -196,6 +211,29 @@
     if (quarter === 3) return '3rd';
     if (quarter === 4) return '4th';
     return 'OT';
+  }
+
+  function formatLiveClock(game) {
+    const rawClock = String(game.clock || '').trim();
+
+    if (!rawClock || rawClock === '0:00') return 'Live';
+
+    const match = rawClock.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return 'Live';
+
+    const minutes = Number(match[1]);
+    const seconds = Number(match[2]);
+    const quarter = Number(game.quarter);
+
+    if (!Number.isInteger(minutes) || !Number.isInteger(seconds) || seconds < 0 || seconds > 59) {
+      return 'Live';
+    }
+
+    if (quarter >= 1 && quarter <= 4 && (minutes > 15 || (minutes === 15 && seconds > 0))) {
+      return 'Live';
+    }
+
+    return `${escapeHtml(rawClock)} remaining`;
   }
 
   function formatSyncStatus(isoValue) {
@@ -358,9 +396,7 @@
   function liveCardHtml(game) {
     const quarter = formatQuarter(game.quarter);
     const statusText = quarter ? `Live · ${quarter}` : 'Live';
-    const clockText = game.clock && game.clock !== '0:00'
-      ? `${escapeHtml(game.clock)} remaining`
-      : 'Live';
+    const clockText = formatLiveClock(game);
 
     return `
       <article class="card game-card game-card-live" data-game-id="${escapeHtml(game.game_id)}">
@@ -440,12 +476,18 @@
 
     if (prevButton) {
       prevButton.textContent = 'Previous';
-      prevButton.disabled = payload.week <= MIN_WEEK || loading;
+
+      prevButton.disabled =
+        payload.week <= MIN_WEEK ||
+        loading;
     }
 
     if (nextButton) {
       nextButton.textContent = 'Next';
-      nextButton.disabled = payload.week >= MAX_WEEK || loading;
+
+      nextButton.disabled =
+        payload.week >= MAX_WEEK ||
+        loading;
     }
   }
 
@@ -487,7 +529,231 @@
 
     hideMessage();
     setBrowserWeek(currentWeek);
+
+    if (playerScoreboardOverlay && !playerScoreboardOverlay.hidden) {
+      renderPlayerScoreboard();
+    }
   }
+
+  function playerIdentityKey(pick) {
+    const playerId = String(pick && pick.player_id || '').trim();
+    if (playerId) return `id:${playerId}`;
+    return `name:${String(pick && pick.player_name || '').trim().toLowerCase()}`;
+  }
+
+  function finalGameMap() {
+    const map = new Map();
+    const games = scoreboard && Array.isArray(scoreboard.games) ? scoreboard.games : [];
+
+    games.forEach(game => {
+      if (phaseKey(game) !== 'final') return;
+
+      let winner = String(game.winner || '').trim().toUpperCase();
+
+      if (!winner) {
+        const awayScore = Number(game.away_score);
+        const homeScore = Number(game.home_score);
+
+        if (Number.isFinite(awayScore) && Number.isFinite(homeScore) && awayScore !== homeScore) {
+          winner = awayScore > homeScore
+            ? String(game.away_abbr || '').trim().toUpperCase()
+            : String(game.home_abbr || '').trim().toUpperCase();
+        }
+      }
+
+      map.set(String(game.game_id), {
+        game_id: String(game.game_id),
+        winner
+      });
+    });
+
+    return map;
+  }
+
+  function playerScoreboardRows() {
+    const games = scoreboard && Array.isArray(scoreboard.games) ? scoreboard.games : [];
+    const finals = finalGameMap();
+    const playerMap = new Map();
+
+    if (whoPickedWho && Array.isArray(whoPickedWho.games)) {
+      whoPickedWho.games.forEach(revealGame => {
+        if (!revealGame || revealGame.revealed !== true || !Array.isArray(revealGame.picks)) return;
+
+        revealGame.picks.forEach(pick => {
+          const name = String(pick && pick.player_name || '').trim();
+          if (!name) return;
+
+          const key = playerIdentityKey(pick);
+
+          if (!playerMap.has(key)) {
+            playerMap.set(key, {
+              key,
+              player_id: String(pick.player_id || '').trim(),
+              player_name: name
+            });
+          }
+        });
+      });
+    }
+
+    const findPlayerPick = (revealGame, player) => {
+      if (!revealGame || !Array.isArray(revealGame.picks)) return null;
+
+      return revealGame.picks.find(pick => {
+        const pickId = String(pick && pick.player_id || '').trim();
+
+        if (player.player_id && pickId) {
+          return pickId === player.player_id;
+        }
+
+        return String(pick && pick.player_name || '').trim().toLowerCase() === player.player_name.toLowerCase();
+      }) || null;
+    };
+
+    const rows = [...playerMap.values()].map(player => {
+      let correct = 0;
+      let incorrect = 0;
+
+      finals.forEach((finalGame, gameId) => {
+        const revealGame = whoGameFor(gameId);
+        const pick = findPlayerPick(revealGame, player);
+
+        if (!pick) {
+          incorrect += 1;
+          return;
+        }
+
+        const pickTeam = String(pick.pick_team || '').trim().toUpperCase();
+
+        if (finalGame.winner && pickTeam === finalGame.winner) {
+          correct += 1;
+        } else {
+          incorrect += 1;
+        }
+      });
+
+      return {
+        ...player,
+        correct,
+        incorrect,
+        pending: Math.max(games.length - finals.size, 0),
+        rank: 0
+      };
+    });
+
+    rows.sort((a, b) => {
+      if (b.correct !== a.correct) return b.correct - a.correct;
+      return a.player_name.localeCompare(b.player_name);
+    });
+
+    let priorCorrect = null;
+    let priorRank = 0;
+
+    rows.forEach((row, index) => {
+      if (priorCorrect === null || row.correct !== priorCorrect) {
+        priorRank = index + 1;
+        priorCorrect = row.correct;
+      }
+
+      row.rank = priorRank;
+    });
+
+    return rows;
+  }
+
+  function renderPlayerScoreboard(messageText = '') {
+    if (!playerScoreboardOverlay || !playerScoreboardBody) return;
+
+    const games = scoreboard && Array.isArray(scoreboard.games) ? scoreboard.games : [];
+    const finalCount = finalGameMap().size;
+    const totalGames = games.length;
+    const rows = playerScoreboardRows();
+
+    if (playerScoreboardTitle) {
+      playerScoreboardTitle.textContent = `Week ${currentWeek} Live Scoreboard`;
+    }
+
+    if (playerScoreboardSubtitle) {
+      playerScoreboardSubtitle.textContent =
+        `${finalCount} of ${totalGames} game${totalGames === 1 ? '' : 's'} Final`;
+    }
+
+    if (playerScoreboardRankHeading) {
+      playerScoreboardRankHeading.textContent = `Week ${currentWeek} Rank`;
+    }
+
+    if (messageText) {
+      playerScoreboardBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="player-scoreboard-empty">${escapeHtml(messageText)}</td>
+        </tr>
+      `;
+      return;
+    }
+
+    if (!rows.length) {
+      playerScoreboardBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="player-scoreboard-empty">
+            Player scores will appear after player picks are available for a locked matchup.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    playerScoreboardBody.innerHTML = rows.map(row => `
+      <tr>
+        <th scope="row">${escapeHtml(row.player_name)}</th>
+        <td class="is-correct">${row.correct}</td>
+        <td class="is-incorrect">${row.incorrect}</td>
+        <td>${row.pending}</td>
+        <td class="is-rank">${row.rank}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function refreshPlayerScoreboardData() {
+    try {
+      const freshWhoPickedWho = await fetchWhoPickedWho(currentWeek);
+
+      if (freshWhoPickedWho) {
+        whoPickedWho = freshWhoPickedWho;
+      }
+
+      renderPlayerScoreboard();
+    } catch (error) {
+      console.error('Player Scoreboard data load failed:', error);
+      renderPlayerScoreboard('Player scores are temporarily unavailable. Please close this window and try again.');
+    }
+  }
+
+  async function openPlayerScoreboard() {
+    if (!playerScoreboardOverlay) return;
+
+    playerScoreboardOverlay.hidden = false;
+    document.body.classList.add('player-scoreboard-open');
+
+    renderPlayerScoreboard('Loading player scores…');
+
+    if (playerScoreboardCloseButton) {
+      playerScoreboardCloseButton.focus();
+    }
+
+    await refreshPlayerScoreboardData();
+  }
+
+  function closePlayerScoreboard() {
+    if (!playerScoreboardOverlay) return;
+
+    playerScoreboardOverlay.hidden = true;
+    document.body.classList.remove('player-scoreboard-open');
+
+    if (playerScoreboardButton) {
+      playerScoreboardButton.focus();
+    }
+  }
+
 
   function overflowCueText() {
     return window.matchMedia('(max-width: 620px)').matches
@@ -594,6 +860,24 @@
   if (prevButton) prevButton.addEventListener('click', () => changeWeek(-1));
   if (nextButton) nextButton.addEventListener('click', () => changeWeek(1));
   if (refreshButton) refreshButton.addEventListener('click', () => loadScoreboard(currentWeek, { refresh: true }));
+  if (playerScoreboardButton) playerScoreboardButton.addEventListener('click', openPlayerScoreboard);
+  if (playerScoreboardCloseButton) playerScoreboardCloseButton.addEventListener('click', closePlayerScoreboard);
 
-  loadScoreboard(requestedWeek ? currentWeek : null);
-})();
+  if (playerScoreboardOverlay) {
+    playerScoreboardOverlay.addEventListener('click', event => {
+      if (event.target === playerScoreboardOverlay) closePlayerScoreboard();
+    });
+  }
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && playerScoreboardOverlay && !playerScoreboardOverlay.hidden) {
+      closePlayerScoreboard();
+    }
+  });
+
+  loadScoreboard(
+    requestedWeek
+      ? currentWeek
+      : null
+  );
+  })();
