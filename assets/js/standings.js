@@ -147,7 +147,18 @@
 
     if (winners.length === 1) {
       weeklyTitle.textContent = `${winner.player_name} wins Week ${week}!`;
-      weeklyLead.textContent = `${winner.correct} correct · ${winner.incorrect} incorrect`;
+
+      const ties = Number(winner.ties || 0);
+      const pickPoints = Number(
+        winner.pick_points !== undefined
+          ? winner.pick_points
+          : Number(winner.correct || 0) + 0.5 * ties
+      );
+
+      weeklyLead.textContent =
+        `${winner.correct} correct · ${winner.incorrect} incorrect · ` +
+        `${ties} ${ties === 1 ? 'tie' : 'ties'} · ${pickPoints} pick points`;
+
       weeklyCopy.textContent = formatTiebreakerSummary(winner);
       return;
     }
@@ -173,6 +184,12 @@
           <td><strong>${escapeHtml(player.player_name)}</strong>${winnerLabel}</td>
           <td>${Number(player.correct || 0)}</td>
           <td>${Number(player.incorrect || 0)}</td>
+          <td>${Number(player.ties || 0)}</td>
+          <td>${Number(
+            player.pick_points !== undefined
+              ? player.pick_points
+              : Number(player.correct || 0) + 0.5 * Number(player.ties || 0)
+          )}</td>
           <td>${escapeHtml(guess)}</td>
           <td>${escapeHtml(diff)}</td>
         </tr>
@@ -271,10 +288,11 @@
       seasonTitle.textContent = `${leader.player_name} leads the ${payload.season} season`;
       seasonLead.textContent =
         `${leader.weeks_won} weekly win${leader.weeks_won === 1 ? '' : 's'} · ` +
-        `${leader.total_correct} correct picks · Season Score ${formatSeasonScore(leader.cumulative_points)}`;
+        `${leader.total_pick_points} pick points · ` +
+        `Season Score ${formatSeasonScore(leader.cumulative_points)}`;
 
       seasonCopy.textContent =
-        `The season score combines 60% weekly wins and 40% total correct picks.`;
+        `The season score combines 60% weekly wins and 40% total pick points.`;
       return;
     }
 
@@ -297,6 +315,13 @@
           <td>${Number(player.weeks_won || 0)}</td>
           <td>${Number(player.total_correct || 0)}</td>
           <td>${Number(player.total_incorrect || 0)}</td>
+          <td>${Number(player.total_ties || 0)}</td>
+          <td>${Number(
+            player.total_pick_points !== undefined
+              ? player.total_pick_points
+              : Number(player.total_correct || 0) +
+                0.5 * Number(player.total_ties || 0)
+          )}</td>
           <td>${escapeHtml(formatSeasonScore(player.cumulative_points))}</td>
         </tr>
       `;
@@ -311,11 +336,14 @@
 
     if (leader) {
       snapshotTitle.textContent =
-        `${leader.player_name} leads after the first graded week`;
+        `${leader.player_name} leads through the latest graded week`;
+
       snapshotCopy.textContent =
         `${leader.weeks_won} weekly win${leader.weeks_won === 1 ? '' : 's'} · ` +
         `${leader.total_correct} correct · ` +
         `${leader.total_incorrect} incorrect · ` +
+        `${leader.total_ties} ${Number(leader.total_ties) === 1 ? 'tie' : 'ties'} · ` +
+        `${leader.total_pick_points} pick points · ` +
         `Season Score ${formatSeasonScore(leader.cumulative_points)}.`;
     } else {
       snapshotTitle.textContent = 'Season snapshot unavailable';

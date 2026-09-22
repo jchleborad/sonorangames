@@ -37,8 +37,8 @@
       <section class="card rules-at-a-glance" aria-labelledby="glance-title">
         <div class="rules-glance-heading"><p class="eyebrow">The essentials</p><h2 class="display" id="glance-title">Rules at a glance</h2></div>
         <div class="glance-stat"><span>Entry fee</span><strong>$50</strong><small>Full regular season</small></div>
-        <div class="glance-stat"><span>Weekly winner</span><strong>Most</strong><small>Correct picks</small></div>
-        <div class="glance-stat"><span>Season score weights</span><strong>60/40</strong><small>Weekly wins / correct picks</small></div>
+        <div class="glance-stat"><span>Weekly winner</span><strong>Most</strong><small>Pick points</small></div>
+        <div class="glance-stat"><span>Season score weights</span><strong>60/40</strong><small>Weekly wins / pick points</small></div>
         <div class="glance-stat"><span>Pick deadline</span><strong>Kickoff</strong><small>Each game locks separately</small></div>
       </section>
 
@@ -81,26 +81,27 @@
         <div class="rule-grid">
           <article class="card rule-card"><span class="rule-icon" aria-hidden="true">1</span><h3>Pick every game</h3><p>Select one winner for every regular-season matchup. Picks may be updated until that individual game begins.</p></article>
           <article class="card rule-card"><span class="rule-icon" aria-hidden="true">⌁</span><h3>Games lock at kickoff</h3><p>Each game locks separately at its scheduled kickoff. Later games remain open even after earlier games have started.</p></article>
-          <article class="card rule-card"><span class="rule-icon" aria-hidden="true">✓</span><h3>Most correct wins</h3><p>The player with the most correct selections is the weekly champion. Weekly prize money is not paid separately.</p></article>
-          <article class="card rule-card"><span class="rule-icon" aria-hidden="true">×</span><h3>Missed picks lose</h3><p>Any game without a submitted selection at kickoff is automatically recorded as an incorrect pick.</p></article>
+          <article class="card rule-card"><span class="rule-icon" aria-hidden="true">✓</span><h3>Highest pick-point total wins</h3><p>The player with the highest weekly pick-point total is the weekly champion. A correct pick earns 1 point, an NFL tie earns 0.5 points for each submitted pick on that matchup, and an incorrect or missed pick earns 0 points. Weekly prize money is not paid separately.</p></article>
+          <article class="card rule-card"><span class="rule-icon" aria-hidden="true">½</span><h3>Tied games earn half credit</h3><p>If an NFL game ends in a tie, every player who submitted a selection for that matchup receives 0.5 pick points. The result is recorded separately as a tie and does not count as either a correct or incorrect pick.</p></article>
+          <article class="card rule-card"><span class="rule-icon" aria-hidden="true">×</span><h3>Missed picks lose</h3><p>Any game without a submitted selection at kickoff is automatically recorded as an incorrect pick and earns 0 pick points, including a matchup that later ends in a tie.</p></article>
         </div>
       </section>
 
       <section class="card tiebreaker-rule" aria-labelledby="tiebreaker-title">
-        <div class="tiebreaker-rule-copy"><p class="eyebrow">When correct-pick totals match</p><h2 class="display" id="tiebreaker-title">The Monday Night tiebreaker</h2><p>Each player predicts the combined final score of the week’s designated Monday Night game. Among players tied for the most correct picks, the prediction closest to the actual combined score wins.</p></div>
+        <div class="tiebreaker-rule-copy"><p class="eyebrow">When weekly pick-point totals match</p><h2 class="display" id="tiebreaker-title">The Monday Night tiebreaker</h2><p>Each player predicts the combined final score of the week’s designated Monday Night game. Among players tied for the highest weekly pick-point total, the prediction closest to the actual combined score wins.</p></div>
         <div class="tiebreaker-steps" aria-label="Tiebreaker process">
-          <div><span>1</span><p>Compare correct picks</p></div><div><span>2</span><p>Measure distance from actual total</p></div><div><span>3</span><p>Closest prediction wins</p></div>
+          <div><span>1</span><p>Compare pick points</p></div><div><span>2</span><p>Measure distance from actual total</p></div><div><span>3</span><p>Closest prediction wins</p></div>
         </div>
-        <p class="shared-win-note"><strong>Still tied?</strong> If players have the same correct-pick total and the same tiebreaker difference, they share the weekly victory. Each receives one full weekly win in the season standings.</p>
+        <p class="shared-win-note"><strong>Still tied?</strong> If players have the same weekly pick-point total and the same tiebreaker difference, they share the weekly victory. Each receives one full weekly win in the season standings.</p>
       </section>
 
       <section class="rules-section" aria-labelledby="season-rule-title">
         <div class="rules-section-heading"><span class="rule-number">03</span><div><p class="eyebrow">The season championship</p><h2 class="display" id="season-rule-title">How overall rank is determined</h2></div></div>
         <section class="card rules-formula-card">
-          <div><h3>Winning weeks matters most</h3><p>The season score combines weekly victories with full-season picking accuracy. Both categories are normalized against the leading player so the calculation stays fair as the season develops.</p></div>
-          <div class="formula-bar" aria-label="Season score is 60 percent weekly wins and 40 percent correct picks"><span class="formula-wins">60% Weekly Wins</span><span class="formula-correct">40% Correct Picks</span></div>
-          <div class="formula-text"><strong>Season Score</strong><span>= 60 × (your weekly wins ÷ most weekly wins) + 40 × (your correct picks ÷ most correct picks)</span></div>
-          <p style="grid-column: 1 / -1; margin: 0;"><strong>How it works:</strong> Your Season Score combines weekly wins and total correct picks. Weekly wins make up 60% of the score, and correct picks make up 40%. In each category, your score is based on how you compare with the current leader. <strong>The highest possible Season Score is 100 points.</strong></p>
+          <div><h3>Winning weeks matters most</h3><p>The season score combines weekly victories with full-season pick points. Both categories are normalized against the leading player so the calculation stays fair as the season develops.</p></div>
+          <div class="formula-bar" aria-label="Season score is 60 percent weekly wins and 40 percent pick points"><span class="formula-wins">60% Weekly Wins</span><span class="formula-correct">40% Pick Points</span></div>
+          <div class="formula-text"><strong>Season Score</strong><span>= 60 × (your weekly wins ÷ most weekly wins) + 40 × (your pick points ÷ most pick points)</span></div>
+          <p style="grid-column: 1 / -1; margin: 0;"><strong>How it works:</strong> Your Season Score combines weekly wins and total pick points. Weekly wins make up 60% of the score, and pick points make up 40%. In each category, your score is based on how you compare with the current leader. <strong>The highest possible Season Score is 100 points.</strong></p>
         </section>
       </section>
 
