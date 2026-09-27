@@ -15,10 +15,12 @@
 
   const playerToken = urlPlayerToken || savedPlayerToken;
   const main = document.querySelector('.picks-main');
+  const mobileSubmitMedia = window.matchMedia('(max-width: 900px)');
   let card = null;
   let guidanceTimer = null;
   let lastGuidedGameId = '';
   let draftDirty = false;
+  let lastSubmitButton = null;
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>"]/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
@@ -252,6 +254,10 @@
   function renderPage() {
     const playerName = card.player.display_name;
     const lockedCount = card.games.filter(game => game.locked).length;
+    const submitHelp = card.picks_open
+      ? 'You may return and change any unlocked pick before that game begins.'
+      : 'Picks are currently closed by the commissioner.';
+
     main.innerHTML = `
       <section class="picks-hero"><div class="container picks-hero-row"><div><p class="eyebrow">${card.season} Regular Season</p><h1 class="display picks-title">Make your Week ${card.week} picks</h1><p class="picks-intro">Choose one winner for every matchup. Each game stays open until its scheduled kickoff.</p></div><div class="player-card" aria-label="Current player"><span class="player-avatar" aria-hidden="true">${escapeHtml(initials(playerName))}</span><div><small>Picking as</small><strong>${escapeHtml(playerName)}</strong></div></div></div></section>
       <div class="container picks-layout"><div class="picks-column">
@@ -259,9 +265,16 @@
         <div class="pick-notice" role="note"><span class="notice-clock" aria-hidden="true">◷</span><div><strong>Games lock individually</strong><p>${lockedCount ? `${lockedCount} game${lockedCount === 1 ? ' is' : 's are'} already locked. ` : ''}You may change every open pick until that matchup begins.</p></div></div>
         ${groupedGames().map(renderDay).join('')}
         <section class="card tiebreaker-card" data-tiebreaker-card><div><p class="eyebrow">Weekly tiebreaker</p><h2 class="display">Total combined points</h2><p>Enter the total points you predict for the final game of the week.</p></div><label class="tiebreaker-input"><span class="sr-only">Total combined points</span><input type="number" min="0" max="200" inputmode="numeric" placeholder="—" data-tiebreaker value="${escapeHtml(card.tiebreaker)}"${card.picks_open ? '' : ' disabled'}><small>Points</small></label></section>
-      </div><aside class="submit-column"><section class="card submit-card" data-submit-card><p class="eyebrow">Review &amp; submit</p><h2 class="display">Your Week ${card.week} card</h2><div class="card-save-status" data-save-status></div><div class="submit-summary"><div><span>Games selected</span><strong><span data-review-count>0</span>/${card.games.length}</strong></div><div><span>Tiebreaker</span><strong data-review-tiebreaker>Not entered</strong></div></div><div class="submit-warning" data-submit-warning></div><button class="button submit-button" type="button" data-submit-picks${card.picks_open ? '' : ' disabled'}>Finish my card →</button><p class="submit-help">${card.picks_open ? 'You may return and change any unlocked pick before that game begins.' : 'Picks are currently closed by the commissioner.'}</p></section></aside></div>
+        <section class="card" data-mobile-submit-card hidden aria-label="Submit your Week ${card.week} picks">
+          <div class="submit-warning" data-submit-warning></div>
+          <button class="button submit-button" type="button" data-submit-picks${card.picks_open ? '' : ' disabled'}>Finish my card →</button>
+          <p class="submit-help">${submitHelp}</p>
+        </section>
+      </div><aside class="submit-column"><section class="card submit-card" data-submit-card><p class="eyebrow">Review &amp; submit</p><h2 class="display">Your Week ${card.week} card</h2><div class="card-save-status" data-save-status></div><div class="submit-summary"><div><span>Games selected</span><strong><span data-review-count>0</span>/${card.games.length}</strong></div><div><span>Tiebreaker</span><strong data-review-tiebreaker>Not entered</strong></div></div><div class="submit-warning" data-submit-warning></div><button class="button submit-button" type="button" data-submit-picks${card.picks_open ? '' : ' disabled'}>Finish my card →</button><p class="submit-help">${submitHelp}</p></section></aside></div>
       <div class="confirmation-overlay" data-confirmation hidden><section class="card confirmation-card" role="dialog" aria-modal="true" aria-labelledby="confirmation-title"><span class="confirmation-mark" aria-hidden="true">✓</span><p class="eyebrow">Touchdown</p><h2 class="display" id="confirmation-title">Week ${card.week} picks saved</h2><p>Your card has been saved. You can still update any matchup that has not locked.</p><div class="confirmation-actions"><button class="button" type="button" data-close-confirmation>Back to my picks</button><a class="text-link" href="/">Return home</a></div></section></div>`;
+
     bindInteractions();
+    syncMobileSubmitVisibility();
     updateState();
     updateSaveStatus();
   }
@@ -284,6 +297,12 @@
     guidanceTimer = window.setTimeout(clearGuidance, 5000);
   }
 
+  function syncMobileSubmitVisibility() {
+    const mobileSubmitCard = document.querySelector('[data-mobile-submit-card]');
+    if (!mobileSubmitCard) return;
+    mobileSubmitCard.hidden = !mobileSubmitMedia.matches;
+  }
+
   function updateState() {
     const total = card.games.length;
     const selected = selectedCount();
@@ -291,20 +310,44 @@
     const tieValue = document.querySelector('[data-tiebreaker]').value.trim();
     const ready = missing === 0 && tieValue !== '';
     const percent = total ? Math.round((selected / total) * 100) : 0;
-    document.querySelectorAll('[data-selected-count], [data-review-count]').forEach(element => { element.textContent = selected; });
+
+    document.querySelectorAll('[data-selected-count], [data-review-count]').forEach(element => {
+      element.textContent = selected;
+    });
+
     document.querySelector('[data-progress-percent]').textContent = `${percent}%`;
     document.querySelector('[data-progress-ring]').style.setProperty('--progress', `${percent}%`);
     document.querySelector('[data-progress-bar]').style.width = `${percent}%`;
     document.querySelector('[data-review-tiebreaker]').textContent = tieValue ? `${tieValue} points` : 'Not entered';
-    document.querySelector('[data-progress-message]').textContent = missing ? `${missing} pick${missing === 1 ? '' : 's'} left.` : tieValue ? 'Your card is complete and ready to submit.' : 'All games selected. Add your tiebreaker.';
-    const warning = document.querySelector('[data-submit-warning]');
-    warning.classList.toggle('is-ready', ready);
+    document.querySelector('[data-progress-message]').textContent =
+      missing
+        ? `${missing} pick${missing === 1 ? '' : 's'} left.`
+        : tieValue
+          ? 'Your card is complete and ready to submit.'
+          : 'All games selected. Add your tiebreaker.';
+
     let needed = '';
     if (missing && !tieValue) needed = `${missing} game pick${missing === 1 ? '' : 's'} and your tiebreaker score.`;
     else if (missing) needed = `${missing} game pick${missing === 1 ? '' : 's'}.`;
     else if (!tieValue) needed = 'Your tiebreaker score.';
-    warning.innerHTML = ready ? `<strong>Ready for kickoff</strong><p>All ${total} games and your tiebreaker are complete.</p>` : `<strong>Still needed</strong><p>${needed}</p>`;
-    document.querySelector('[data-submit-picks]').textContent = ready ? 'Submit my picks →' : selected > 0 ? 'Save my picks →' : 'Start my card →';
+
+    document.querySelectorAll('[data-submit-warning]').forEach(warning => {
+      warning.classList.toggle('is-ready', ready);
+      warning.innerHTML = ready
+        ? `<strong>Ready for kickoff</strong><p>All ${total} games and your tiebreaker are complete.</p>`
+        : `<strong>Still needed</strong><p>${needed}</p>`;
+    });
+
+    const submitLabel =
+      ready
+        ? 'Submit my picks →'
+        : selected > 0
+          ? 'Save my picks →'
+          : 'Start my card →';
+
+    document.querySelectorAll('[data-submit-picks]').forEach(button => {
+      button.textContent = submitLabel;
+    });
   }
 
   function selectTeam(gameElement, button) {
@@ -333,8 +376,19 @@
     return document.querySelector(`[data-game-id="${CSS.escape(String(next.game_id))}"]`);
   }
 
-  async function submitPicks() {
-    const button = document.querySelector('[data-submit-picks]');
+  async function submitPicks(event) {
+    const buttons = [...document.querySelectorAll('[data-submit-picks]')];
+    const activeButton =
+      event && event.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : buttons[0];
+
+    lastSubmitButton = activeButton || buttons[0] || null;
+
+    const errorTarget =
+      lastSubmitButton?.closest('[data-mobile-submit-card], [data-submit-card]') ||
+      document.querySelector('[data-submit-card]');
+
     const tiebreaker = document.querySelector('[data-tiebreaker]');
 
     const selectedOpenGames = card.games.filter(
@@ -354,8 +408,10 @@
       return;
     }
 
-    button.disabled = true;
-    button.textContent = 'Saving…';
+    buttons.forEach(button => {
+      button.disabled = true;
+      button.textContent = 'Saving…';
+    });
 
     try {
       const tieValue = tiebreaker.value.trim();
@@ -399,10 +455,12 @@
     } catch (error) {
       showInlineError(
         error.message,
-        document.querySelector('[data-submit-card]')
+        errorTarget || main
       );
     } finally {
-      button.disabled = !card.picks_open;
+      buttons.forEach(button => {
+        button.disabled = !card.picks_open;
+      });
       updateState();
     }
   }
@@ -411,18 +469,46 @@
     const confirmation = document.querySelector('[data-confirmation]');
     confirmation.hidden = true;
     document.body.style.overflow = '';
-    document.querySelector('[data-submit-picks]').focus();
+
+    if (lastSubmitButton && document.contains(lastSubmitButton)) {
+      lastSubmitButton.focus();
+    } else {
+      document.querySelector('[data-submit-picks]')?.focus();
+    }
   }
 
   function bindInteractions() {
     document.querySelectorAll('[data-game]').forEach(gameElement => {
-      gameElement.querySelectorAll('.team-choice').forEach(button => button.addEventListener('click', () => selectTeam(gameElement, button)));
+      gameElement.querySelectorAll('.team-choice').forEach(button =>
+        button.addEventListener('click', () => selectTeam(gameElement, button))
+      );
     });
-    document.querySelector('[data-tiebreaker]').addEventListener('input', () => { updateState(); saveDraft(); });
-    document.querySelector('[data-submit-picks]').addEventListener('click', submitPicks);
+
+    document.querySelector('[data-tiebreaker]').addEventListener('input', () => {
+      updateState();
+      saveDraft();
+    });
+
+    document.querySelectorAll('[data-submit-picks]').forEach(button => {
+      button.addEventListener('click', submitPicks);
+    });
+
     document.querySelector('[data-close-confirmation]').addEventListener('click', closeConfirmation);
-    document.querySelector('[data-confirmation]').addEventListener('click', event => { if (event.target === event.currentTarget) closeConfirmation(); });
-    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !document.querySelector('[data-confirmation]').hidden) closeConfirmation(); });
+    document.querySelector('[data-confirmation]').addEventListener('click', event => {
+      if (event.target === event.currentTarget) closeConfirmation();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !document.querySelector('[data-confirmation]').hidden) {
+        closeConfirmation();
+      }
+    });
+
+    if (typeof mobileSubmitMedia.addEventListener === 'function') {
+      mobileSubmitMedia.addEventListener('change', syncMobileSubmitVisibility);
+    } else if (typeof mobileSubmitMedia.addListener === 'function') {
+      mobileSubmitMedia.addListener(syncMobileSubmitVisibility);
+    }
   }
 
   function showInlineError(message, target = main) {
@@ -459,7 +545,7 @@
 
       restoreNewerDraft();
       renderPage();
-      
+
     } catch (error) {
       renderFatal(error.message);
     }
