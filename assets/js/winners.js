@@ -241,7 +241,6 @@
     }).join('');
   }
 
-
   function renderTitleRace(season) {
     const leaders = Array.isArray(season.leaders) ? season.leaders : [];
 
@@ -256,7 +255,7 @@
       raceTitle.textContent = `${leader.player_name} currently holds the crown.`;
       raceCopy.textContent =
         `${leader.weeks_won} weekly win${leader.weeks_won === 1 ? '' : 's'} · ` +
-        `${leader.total_correct} correct picks · Season Score ${formatSeasonScore(leader.cumulative_points)}.`;
+        `${leader.total_pick_points} pick points · Season Score ${formatSeasonScore(leader.cumulative_points)}.`;
       return;
     }
 
@@ -303,12 +302,26 @@
   function reconstructSeasonSnapshots(history) {
     const cumulative = {};
     const snapshots = [];
+    let maximumAvailablePickPoints = 0;
 
     history
       .slice()
       .sort((a, b) => Number(a.week || 0) - Number(b.week || 0))
-      .forEach(weekResult => {
-        (weekResult.players || []).forEach(player => {
+      .forEach((weekResult, weekIndex) => {
+        const weekPlayers = Array.isArray(weekResult.players) ? weekResult.players : [];
+        const weekGameCount = weekPlayers.reduce((maximum, player) =>
+          Math.max(
+            maximum,
+            Number(player.correct || 0) +
+            Number(player.incorrect || 0) +
+            Number(player.ties || 0)
+          ), 0);
+        const weekTieCount = weekPlayers.reduce((maximum, player) =>
+          Math.max(maximum, Number(player.ties || 0)), 0);
+
+        maximumAvailablePickPoints += weekGameCount - (0.5 * weekTieCount);
+
+        weekPlayers.forEach(player => {
           const id = player.player_id;
           if (!cumulative[id]) {
             cumulative[id] = {
@@ -316,32 +329,41 @@
               player_name: player.player_name,
               weeks_won: 0,
               total_correct: 0,
-              total_incorrect: 0
+              total_incorrect: 0,
+              total_ties: 0,
+              total_pick_points: 0
             };
           }
 
           cumulative[id].total_correct += Number(player.correct || 0);
           cumulative[id].total_incorrect += Number(player.incorrect || 0);
+          cumulative[id].total_ties += Number(player.ties || 0);
+          cumulative[id].total_pick_points += Number(
+            player.pick_points !== '' && player.pick_points !== undefined
+              ? player.pick_points
+              : Number(player.correct || 0) + 0.5 * Number(player.ties || 0)
+          );
 
           if (player.week_win) {
             cumulative[id].weeks_won += 1;
           }
         });
 
+        const completedWeekCount = weekIndex + 1;
         const rows = Object.values(cumulative).map(player => ({ ...player }));
-        const maxWins = Math.max(0, ...rows.map(player => player.weeks_won));
-        const maxCorrect = Math.max(0, ...rows.map(player => player.total_correct));
 
         rows.forEach(player => {
-          const winsPoints = maxWins > 0 ? (player.weeks_won / maxWins) * 60 : 0;
-          const correctPoints = maxCorrect > 0 ? (player.total_correct / maxCorrect) * 40 : 0;
-          player.score = winsPoints + correctPoints;
+          const winsPoints = 60 * (player.weeks_won / completedWeekCount);
+          const pickPoints = maximumAvailablePickPoints > 0
+            ? 40 * (player.total_pick_points / maximumAvailablePickPoints)
+            : 0;
+          player.score = winsPoints + pickPoints;
         });
 
         rows.sort((a, b) =>
           b.score - a.score ||
           b.weeks_won - a.weeks_won ||
-          b.total_correct - a.total_correct ||
+          b.total_pick_points - a.total_pick_points ||
           a.player_name.localeCompare(b.player_name)
         );
 

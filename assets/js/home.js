@@ -207,7 +207,7 @@
       if (seasonCopy) {
         seasonCopy.textContent =
           `${leader.weeks_won} weekly win${leader.weeks_won === 1 ? '' : 's'} · ` +
-          `${leader.total_correct} correct · Season Score ${formatSeasonScore(leader.cumulative_points)}`;
+          `${leader.total_pick_points} pick points · Season Score ${formatSeasonScore(leader.cumulative_points)}`;
       }
       return;
     }
