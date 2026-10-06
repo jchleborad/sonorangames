@@ -126,18 +126,127 @@
           </section>
         </div>
 
-        <section class="card commissioner-card commissioner-control-preview">
+        <section class="card commissioner-card commissioner-control-center">
           <div class="commissioner-card-heading">
-            <div><p class="eyebrow">Actions</p><h2 class="display">Commissioner Control Center</h2></div>
-            <span class="status status-upcoming">Read-only checkpoint</span>
+            <div>
+              <p class="eyebrow">Actions</p>
+              <h2 class="display">Commissioner Control Center</h2>
+            </div>
+            <span class="status status-upcoming">Protected actions</span>
           </div>
-          <p class="commissioner-muted">Pick Override, Player Controls, and Recovery Tools will be enabled in the next checkpoint after this read-only page is approved.</p>
-          <div class="commissioner-control-groups">
-            <div class="commissioner-control-group"><strong>Pick Actions</strong><span>Pick Override</span></div>
-            <div class="commissioner-control-group"><strong>Player Controls</strong><span>Generate / Rotate · Revoke · Activate / Deactivate</span></div>
-            <div class="commissioner-control-group"><strong>Recovery Tools</strong><span>Sync Scores · Preview Rollover · Retry Rollover</span></div>
+
+          <div class="commissioner-control-layout">
+            <section class="commissioner-action-panel commissioner-action-panel-active">
+              <div class="commissioner-action-panel-heading">
+                <div>
+                  <p class="eyebrow">Pick actions</p>
+                  <h3>Pick Override</h3>
+                </div>
+                <span class="commissioner-muted">Current week only</span>
+              </div>
+
+              <p class="commissioner-action-help">
+                Select the player, game, and team. Player IDs, Game IDs, and team abbreviations
+                are filled from the live Week data — no manual IDs required.
+              </p>
+
+              <form class="commissioner-override-form" data-override-form>
+                <div class="commissioner-form-grid">
+                  <label class="commissioner-field">
+                    <span>Player</span>
+                    <select class="commissioner-select" data-override-player required>
+                      <option value="">Choose player…</option>
+                    </select>
+                  </label>
+
+                  <label class="commissioner-field">
+                    <span>Game</span>
+                    <select class="commissioner-select" data-override-game required>
+                      <option value="">Choose game…</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="commissioner-game-reference" data-override-game-reference hidden>
+                  <div>
+                    <span class="commissioner-field-label">Game ID</span>
+                    <strong data-override-game-id>—</strong>
+                  </div>
+                  <button class="commissioner-copy-button" type="button" data-copy-override-game-id>
+                    Copy
+                  </button>
+                </div>
+
+                <fieldset class="commissioner-pick-fieldset" data-override-pick-fieldset disabled>
+                  <legend>Pick</legend>
+                  <div class="commissioner-pick-options" data-override-pick-options>
+                    <span class="commissioner-muted">Choose a game first.</span>
+                  </div>
+                </fieldset>
+
+                <label class="commissioner-field">
+                  <span>Reason</span>
+                  <textarea
+                    class="commissioner-textarea"
+                    data-override-reason
+                    rows="3"
+                    placeholder="Why is this Commissioner override needed?"
+                    required
+                  ></textarea>
+                </label>
+
+                <div class="commissioner-requested-by">
+                  <span>Requested by</span>
+                  <strong>JohnC</strong>
+                </div>
+
+                <p class="commissioner-action-message" data-override-message aria-live="polite"></p>
+
+                <button class="button commissioner-preview-button" type="submit" data-preview-override disabled>
+                  Preview Override
+                </button>
+              </form>
+
+              <div class="commissioner-action-success" data-override-success hidden></div>
+            </section>
+
+            <div class="commissioner-control-side">
+              <section class="commissioner-control-group">
+                <strong>Player Controls</strong>
+                <span>Generate / Rotate · Revoke · Activate / Deactivate</span>
+                <small>Coming next</small>
+              </section>
+
+              <section class="commissioner-control-group">
+                <strong>Recovery Tools</strong>
+                <span>Sync Scores · Preview Rollover · Retry Rollover</span>
+                <small>Coming after Player Controls</small>
+              </section>
+            </div>
           </div>
         </section>
+
+        <dialog class="commissioner-confirm-dialog" data-override-dialog>
+          <form method="dialog" class="commissioner-confirm-card">
+            <p class="eyebrow">Confirm Commissioner Action</p>
+            <h2 class="display">Pick Override</h2>
+
+            <div class="commissioner-confirm-summary" data-override-preview></div>
+
+            <div class="commissioner-confirm-warning">
+              This action can change a locked pick. Confirm the details before continuing.
+            </div>
+
+            <div class="commissioner-confirm-actions">
+              <button class="commissioner-secondary-button" type="button" data-cancel-override>
+                Cancel
+              </button>
+              <button class="button" type="button" data-confirm-override>
+                Confirm Override
+              </button>
+            </div>
+          </form>
+        </dialog>
 
         <div class="commissioner-grid commissioner-grid-2">
           <section class="card commissioner-card">

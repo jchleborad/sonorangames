@@ -15,6 +15,27 @@
   const logoutButton = document.querySelector('[data-logout]');
   const returnLoginButton = document.querySelector('[data-return-login]');
 
+  const overrideForm = document.querySelector('[data-override-form]');
+  const overridePlayer = document.querySelector('[data-override-player]');
+  const overrideGame = document.querySelector('[data-override-game]');
+  const overrideReason = document.querySelector('[data-override-reason]');
+  const overrideMessage = document.querySelector('[data-override-message]');
+  const overrideSuccess = document.querySelector('[data-override-success]');
+  const overrideGameReference = document.querySelector('[data-override-game-reference]');
+  const overrideGameId = document.querySelector('[data-override-game-id]');
+  const copyOverrideGameId = document.querySelector('[data-copy-override-game-id]');
+  const overridePickFieldset = document.querySelector('[data-override-pick-fieldset]');
+  const overridePickOptions = document.querySelector('[data-override-pick-options]');
+  const previewOverrideButton = document.querySelector('[data-preview-override]');
+  const overrideDialog = document.querySelector('[data-override-dialog]');
+  const overridePreview = document.querySelector('[data-override-preview]');
+  const cancelOverrideButton = document.querySelector('[data-cancel-override]');
+  const confirmOverrideButton = document.querySelector('[data-confirm-override]');
+
+  let dashboardData = null;
+  let pendingOverride = null;
+  let lastOverrideResult = null;
+
   const escapeHtml = value => String(value ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 
   function getSessionToken(){try{return sessionStorage.getItem(SESSION_KEY)||'';}catch(e){return '';}}
@@ -103,7 +124,207 @@
     t.innerHTML=rows.length?rows.map(r=>`<div class="commissioner-activity-row"><div><strong>${escapeHtml(String(r.action||'').replaceAll('_',' '))}</strong><small>${escapeHtml(r.details||r.entity_id||'')}</small></div><small>${r.timestamp_utc?escapeHtml(formatLocal(r.timestamp_utc)):''}</small></div>`).join(''):'<div class="commissioner-empty">No recent Commissioner activity.</div>';
   }
 
-  function renderDashboard(p){renderAlerts(p);renderWeek(p);renderParticipation(p);renderSchedule(p);renderCompetition(p);renderAround(p);renderWinners(p);renderHealth(p);renderActivity(p);showDashboard();}
+  function selectedOverrideGame(){
+    if(!dashboardData||!overrideGame)return null;
+    const games=dashboardData.schedule?.games||[];
+    return games.find(game=>String(game.game_id)===String(overrideGame.value))||null;
+  }
+
+  function selectedOverridePlayer(){
+    if(!dashboardData||!overridePlayer)return null;
+    const players=dashboardData.participation?.players||[];
+    return players.find(player=>String(player.player_id)===String(overridePlayer.value))||null;
+  }
+
+  function selectedOverridePick(){
+    const checked=document.querySelector('input[name="commissioner-override-pick"]:checked');
+    return checked?checked.value:'';
+  }
+
+  function updateOverrideButtonState(){
+    if(!previewOverrideButton)return;
+    previewOverrideButton.disabled=!(
+      overridePlayer?.value &&
+      overrideGame?.value &&
+      selectedOverridePick() &&
+      overrideReason?.value.trim()
+    );
+  }
+
+  function renderOverrideGame(){
+    const game=selectedOverrideGame();
+
+    if(!game){
+      if(overrideGameReference)overrideGameReference.hidden=true;
+      if(overrideGameId)overrideGameId.textContent='—';
+      if(overridePickFieldset)overridePickFieldset.disabled=true;
+      if(overridePickOptions)overridePickOptions.innerHTML='<span class="commissioner-muted">Choose a game first.</span>';
+      updateOverrideButtonState();
+      return;
+    }
+
+    if(overrideGameReference)overrideGameReference.hidden=false;
+    if(overrideGameId)overrideGameId.textContent=game.game_id;
+    if(overridePickFieldset)overridePickFieldset.disabled=false;
+
+    if(overridePickOptions){
+      const teams=[
+        {abbr:game.away_abbr,label:`${game.away_abbr} — ${game.away_team||game.away_abbr}`},
+        {abbr:game.home_abbr,label:`${game.home_abbr} — ${game.home_team||game.home_abbr}`}
+      ];
+
+      overridePickOptions.innerHTML=teams.map((team,index)=>`
+        <div class="commissioner-pick-choice">
+          <input
+            id="commissioner-pick-${index}"
+            type="radio"
+            name="commissioner-override-pick"
+            value="${escapeHtml(team.abbr)}"
+          >
+          <label for="commissioner-pick-${index}">${escapeHtml(team.label)}</label>
+        </div>
+      `).join('');
+
+      overridePickOptions.querySelectorAll('input').forEach(input=>{
+        input.addEventListener('change',updateOverrideButtonState);
+      });
+    }
+
+    updateOverrideButtonState();
+  }
+
+  function renderPickOverride(p){
+    dashboardData=p;
+    if(!overridePlayer||!overrideGame)return;
+
+    const currentPlayer=overridePlayer.value;
+    const currentGame=overrideGame.value;
+
+    const players=(p.participation?.players||[])
+      .slice()
+      .sort((a,b)=>String(a.player_name||'').localeCompare(String(b.player_name||'')));
+
+    overridePlayer.innerHTML='<option value="">Choose player…</option>'+
+      players.map(player=>`<option value="${escapeHtml(player.player_id)}">${escapeHtml(player.player_name)}</option>`).join('');
+
+    const games=(p.schedule?.games||[]).slice();
+    overrideGame.innerHTML='<option value="">Choose game…</option>'+
+      games.map(game=>`<option value="${escapeHtml(game.game_id)}">${escapeHtml(game.game_day_arizona)} · ${escapeHtml(formatAZ(game.kickoff_utc))} · ${escapeHtml(game.away_abbr)} @ ${escapeHtml(game.home_abbr)}</option>`).join('');
+
+    if(players.some(player=>String(player.player_id)===currentPlayer))overridePlayer.value=currentPlayer;
+    if(games.some(game=>String(game.game_id)===currentGame))overrideGame.value=currentGame;
+
+    renderOverrideGame();
+
+    if(lastOverrideResult&&overrideSuccess){
+      overrideSuccess.hidden=false;
+      overrideSuccess.innerHTML=`
+        <strong>Override completed</strong>
+        ${escapeHtml(lastOverrideResult.player_name)} ·
+        ${escapeHtml(lastOverrideResult.away_team)} @ ${escapeHtml(lastOverrideResult.home_team)} ·
+        Pick: ${escapeHtml(lastOverrideResult.pick_team)}
+      `;
+    }
+  }
+
+  function previewPickOverride(event){
+    event.preventDefault();
+
+    const player=selectedOverridePlayer();
+    const game=selectedOverrideGame();
+    const pick=selectedOverridePick();
+    const reason=overrideReason?.value.trim()||'';
+
+    if(!player||!game||!pick||!reason){
+      if(overrideMessage)overrideMessage.textContent='Complete all Pick Override fields first.';
+      updateOverrideButtonState();
+      return;
+    }
+
+    pendingOverride={
+      player_id:player.player_id,
+      player_name:player.player_name,
+      game_id:String(game.game_id),
+      away_team:game.away_abbr,
+      home_team:game.home_abbr,
+      kickoff_arizona:game.kickoff_arizona,
+      pick_team:pick,
+      reason
+    };
+
+    if(overrideMessage)overrideMessage.textContent='';
+
+    if(overridePreview){
+      overridePreview.innerHTML=`
+        <div class="commissioner-confirm-line"><span>Player</span><strong>${escapeHtml(player.player_name)}</strong></div>
+        <div class="commissioner-confirm-line"><span>Week</span><strong>Week ${Number(dashboardData.week||0)}</strong></div>
+        <div class="commissioner-confirm-line"><span>Game</span><strong>${escapeHtml(game.away_abbr)} @ ${escapeHtml(game.home_abbr)}</strong></div>
+        <div class="commissioner-confirm-line"><span>Kickoff</span><strong>${escapeHtml(game.kickoff_arizona||'')}</strong></div>
+        <div class="commissioner-confirm-line"><span>Game ID</span><strong>${escapeHtml(game.game_id)}</strong></div>
+        <div class="commissioner-confirm-line"><span>Pick</span><strong>${escapeHtml(pick)}</strong></div>
+        <div class="commissioner-confirm-line"><span>Reason</span><strong>${escapeHtml(reason)}</strong></div>
+        <div class="commissioner-confirm-line"><span>Requested by</span><strong>JohnC</strong></div>
+      `;
+    }
+
+    if(overrideDialog?.showModal)overrideDialog.showModal();
+  }
+
+  async function confirmPickOverride(){
+    if(!pendingOverride)return;
+
+    const token=getSessionToken();
+    if(!token){showLogin();return;}
+
+    if(confirmOverrideButton){
+      confirmOverrideButton.disabled=true;
+      confirmOverrideButton.textContent='Saving Override…';
+    }
+
+    try{
+      const result=await postJson({
+        action:'runCommissionerAction',
+        action_type:'PICK_OVERRIDE',
+        session_token:token,
+        player_id:pendingOverride.player_id,
+        game_id:pendingOverride.game_id,
+        pick_team:pendingOverride.pick_team,
+        reason:pendingOverride.reason
+      });
+
+      lastOverrideResult=result;
+      pendingOverride=null;
+
+      if(overrideDialog?.open)overrideDialog.close();
+      if(overrideForm)overrideForm.reset();
+      if(overrideGameReference)overrideGameReference.hidden=true;
+      if(overridePickFieldset)overridePickFieldset.disabled=true;
+      if(overridePickOptions)overridePickOptions.innerHTML='<span class="commissioner-muted">Choose a game first.</span>';
+
+      await loadDashboard();
+    }catch(error){
+      if(overrideDialog?.open)overrideDialog.close();
+
+      if(
+        ['COMMISSIONER_SESSION_REQUIRED','INVALID_COMMISSIONER_SESSION','COMMISSIONER_SESSION_EXPIRED']
+          .includes(error.code)
+      ){
+        clearSessionToken();
+        showLogin();
+        if(loginMessage)loginMessage.textContent=error.message;
+      }else if(overrideMessage){
+        overrideMessage.textContent=error.message;
+      }
+    }finally{
+      if(confirmOverrideButton){
+        confirmOverrideButton.disabled=false;
+        confirmOverrideButton.textContent='Confirm Override';
+      }
+      updateOverrideButtonState();
+    }
+  }
+
+  function renderDashboard(p){dashboardData=p;renderAlerts(p);renderWeek(p);renderParticipation(p);renderSchedule(p);renderCompetition(p);renderAround(p);renderWinners(p);renderHealth(p);renderActivity(p);renderPickOverride(p);showDashboard();}
 
   async function loadDashboard(){
     const token=getSessionToken();if(!token){showLogin();return;}
@@ -128,6 +349,39 @@
   if(refreshButton)refreshButton.addEventListener('click',loadDashboard);
   if(logoutButton)logoutButton.addEventListener('click',logout);
   if(returnLoginButton)returnLoginButton.addEventListener('click',()=>{clearSessionToken();showLogin();});
+
+  if(overrideForm)overrideForm.addEventListener('submit',previewPickOverride);
+  if(overridePlayer)overridePlayer.addEventListener('change',updateOverrideButtonState);
+  if(overrideGame)overrideGame.addEventListener('change',renderOverrideGame);
+  if(overrideReason)overrideReason.addEventListener('input',updateOverrideButtonState);
+
+  if(copyOverrideGameId){
+    copyOverrideGameId.addEventListener('click',async()=>{
+      const game=selectedOverrideGame();
+      if(!game)return;
+      try{
+        await navigator.clipboard.writeText(String(game.game_id));
+        const original=copyOverrideGameId.textContent;
+        copyOverrideGameId.textContent='Copied';
+        setTimeout(()=>copyOverrideGameId.textContent=original,1200);
+      }catch(error){
+        window.prompt('Copy Game ID:',String(game.game_id));
+      }
+    });
+  }
+
+  if(cancelOverrideButton){
+    cancelOverrideButton.addEventListener('click',()=>{
+      pendingOverride=null;
+      if(overrideDialog?.open)overrideDialog.close();
+    });
+  }
+
+  if(confirmOverrideButton)confirmOverrideButton.addEventListener('click',confirmPickOverride);
+
+  if(overrideDialog){
+    overrideDialog.addEventListener('cancel',()=>{pendingOverride=null;});
+  }
 
   if(getSessionToken())loadDashboard();else showLogin();
 })();

@@ -70,3 +70,62 @@
 .commissioner-empty{padding:18px;border-radius:12px;background:var(--linen);color:var(--muted);font-size:.84rem}
 @media(max-width:900px){.commissioner-hero-row{align-items:stretch;flex-direction:column}.commissioner-hero-actions{min-width:0}.commissioner-grid-2{grid-template-columns:1fr}.commissioner-control-groups{grid-template-columns:1fr}.commissioner-alerts{grid-template-columns:1fr}}
 @media(max-width:640px){.commissioner-login-wrap,.commissioner-error-wrap{padding:42px 0 72px}.commissioner-login-card,.commissioner-card{padding:20px}.commissioner-hero{padding:30px 0 22px}.commissioner-title{font-size:3rem}.commissioner-action-row{align-items:stretch;flex-direction:column}.commissioner-text-button{min-height:40px}.commissioner-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.commissioner-card-heading{align-items:flex-start;flex-direction:column}.commissioner-game-row{grid-template-columns:1fr;gap:5px}.commissioner-game-id{justify-content:flex-start}.commissioner-stat-grid{grid-template-columns:1fr}}
+
+/* Pick Override — write-enabled Commissioner action */
+.commissioner-control-center{border:1px solid var(--border)}
+.commissioner-control-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:18px}
+.commissioner-action-panel{padding:20px;border-radius:15px;background:var(--linen)}
+.commissioner-action-panel-active{border:1px solid rgba(184,92,56,.22);background:#fffaf2}
+.commissioner-action-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px}
+.commissioner-action-panel-heading h3{margin:2px 0 0;font-size:1.35rem}
+.commissioner-action-help{margin:0 0 18px;color:var(--muted);font-size:.84rem;line-height:1.55}
+.commissioner-override-form{display:grid;gap:16px}
+.commissioner-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.commissioner-field{display:grid;gap:7px}
+.commissioner-field>span,.commissioner-field-label,.commissioner-pick-fieldset legend{font-size:.78rem;font-weight:800;color:var(--ink)}
+.commissioner-select,.commissioner-textarea{width:100%;border:1px solid var(--border);border-radius:11px;background:var(--white);color:var(--ink);font:inherit}
+.commissioner-select{min-height:46px;padding:9px 38px 9px 12px}
+.commissioner-textarea{padding:11px 12px;resize:vertical;line-height:1.45}
+.commissioner-select:focus,.commissioner-textarea:focus{outline:none;border-color:var(--copper);box-shadow:0 0 0 3px rgba(184,92,56,.12)}
+.commissioner-game-reference{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:11px;background:var(--white)}
+.commissioner-game-reference div{display:grid;gap:2px}
+.commissioner-game-reference strong{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.commissioner-pick-fieldset{margin:0;padding:0;border:0}
+.commissioner-pick-fieldset legend{margin-bottom:7px}
+.commissioner-pick-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.commissioner-pick-choice{position:relative}
+.commissioner-pick-choice input{position:absolute;opacity:0;pointer-events:none}
+.commissioner-pick-choice label{display:flex;align-items:center;justify-content:center;min-height:48px;padding:9px 12px;border:1px solid var(--border);border-radius:11px;background:var(--white);font-weight:800;cursor:pointer}
+.commissioner-pick-choice input:checked+label{border-color:var(--copper);background:rgba(184,92,56,.10);color:var(--copper);box-shadow:0 0 0 2px rgba(184,92,56,.08)}
+.commissioner-pick-choice input:focus-visible+label{outline:3px solid rgba(184,92,56,.18);outline-offset:2px}
+.commissioner-requested-by{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-size:.82rem}
+.commissioner-requested-by span{color:var(--muted)}
+.commissioner-action-message{min-height:18px;margin:0;color:var(--danger);font-size:.8rem;font-weight:700}
+.commissioner-preview-button{width:100%}
+.commissioner-preview-button:disabled{opacity:.5;cursor:not-allowed}
+.commissioner-control-side{display:grid;align-content:start;gap:12px}
+.commissioner-control-group small{color:var(--copper);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.commissioner-action-success{margin-top:16px;padding:14px;border:1px solid rgba(47,124,85,.25);border-radius:12px;background:rgba(47,124,85,.08);color:var(--success);font-size:.86rem;line-height:1.5}
+.commissioner-action-success strong{display:block;margin-bottom:3px;color:var(--ink)}
+.commissioner-confirm-dialog{width:min(calc(100% - 32px),560px);padding:0;border:0;border-radius:18px;background:transparent;box-shadow:0 24px 70px rgba(12,27,46,.28)}
+.commissioner-confirm-dialog::backdrop{background:rgba(12,27,46,.64);backdrop-filter:blur(2px)}
+.commissioner-confirm-card{padding:26px;border-radius:18px;background:var(--white)}
+.commissioner-confirm-card h2{margin:4px 0 18px;font-size:2.3rem}
+.commissioner-confirm-summary{display:grid;gap:9px;padding:16px;border-radius:13px;background:var(--linen)}
+.commissioner-confirm-line{display:grid;grid-template-columns:105px minmax(0,1fr);gap:12px}
+.commissioner-confirm-line span{color:var(--muted);font-size:.78rem;font-weight:700}
+.commissioner-confirm-line strong{font-size:.88rem;word-break:break-word}
+.commissioner-confirm-warning{margin-top:14px;padding:12px 14px;border-left:4px solid var(--gold);border-radius:10px;background:#fff8e8;font-size:.8rem;line-height:1.45}
+.commissioner-confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.commissioner-secondary-button{min-height:44px;padding:0 18px;border:1px solid var(--border);border-radius:10px;background:var(--white);color:var(--ink);font-weight:800}
+.commissioner-confirm-actions .button{min-width:170px}
+@media(max-width:900px){.commissioner-control-layout{grid-template-columns:1fr}}
+@media(max-width:640px){
+  .commissioner-form-grid{grid-template-columns:1fr}
+  .commissioner-action-panel{padding:16px}
+  .commissioner-action-panel-heading{flex-direction:column;gap:5px}
+  .commissioner-confirm-card{padding:20px}
+  .commissioner-confirm-line{grid-template-columns:1fr;gap:2px}
+  .commissioner-confirm-actions{flex-direction:column-reverse}
+  .commissioner-confirm-actions .button,.commissioner-secondary-button{width:100%}
+}
