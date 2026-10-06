@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Sonoran Games Commissioner Control Center.">
+  <title>Commissioner · Sonoran Games</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <link rel="stylesheet" href="/assets/css/commissioner.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="/" aria-label="Sonoran Games home"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a>
+      <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">☰</button>
+      <nav class="nav-links" id="site-nav" data-nav-links aria-label="Primary navigation">
+        <a href="/">Home</a><a href="/scoreboard.html">Scores</a><a href="/picks.html">Picks</a><a href="/standings.html">Standings</a><a href="/winners.html">Winners</a><a href="/rules.html">Rules</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="commissioner-main">
+    <section class="commissioner-login-wrap" data-login-view>
+      <div class="container">
+        <section class="card commissioner-login-card">
+          <div class="commissioner-lock" aria-hidden="true">SG</div>
+          <p class="eyebrow">Private access</p>
+          <h1 class="display">Commissioner Control Center</h1>
+          <p class="commissioner-login-copy">Sign in to review the current Sonoran Games week, player participation, schedule, standings, and system health.</p>
+          <form data-login-form>
+            <label class="commissioner-label" for="commissioner-password">Commissioner Password</label>
+            <input class="commissioner-input" id="commissioner-password" data-password type="password" autocomplete="current-password" required>
+            <p class="commissioner-form-message" data-login-message aria-live="polite"></p>
+            <button class="button commissioner-login-button" type="submit" data-login-button>Sign In</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <section class="commissioner-dashboard" data-dashboard-view hidden>
+      <section class="commissioner-hero">
+        <div class="container commissioner-hero-row">
+          <div>
+            <p class="eyebrow">Sonoran Games Administration</p>
+            <h1 class="display commissioner-title">Commissioner Control Center</h1>
+            <p class="commissioner-intro">Current-week health, participation, competition, and system status in one place.</p>
+          </div>
+          <div class="commissioner-hero-actions">
+            <div class="commissioner-week-chip">
+              <span class="eyebrow">Current week</span>
+              <strong data-current-week>Loading…</strong>
+              <small data-last-refresh>Loading dashboard…</small>
+            </div>
+            <div class="commissioner-action-row">
+              <button class="button" type="button" data-refresh-dashboard>Refresh Dashboard</button>
+              <button class="commissioner-text-button" type="button" data-logout>Sign Out</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="container commissioner-layout">
+        <section class="commissioner-alerts" data-alerts aria-live="polite"></section>
+
+        <div class="commissioner-grid commissioner-grid-2">
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Current week</p><h2 class="display">Week Status</h2></div>
+              <span class="status status-upcoming" data-week-state>Loading</span>
+            </div>
+            <div class="commissioner-metrics" data-week-metrics></div>
+            <div class="commissioner-next-game" data-next-kickoff></div>
+          </section>
+
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Pick completion</p><h2 class="display">Player Participation</h2></div>
+              <strong class="commissioner-big-stat" data-participation-summary>—</strong>
+            </div>
+            <div data-incomplete-players></div>
+          </section>
+        </div>
+
+        <section class="card commissioner-card">
+          <div class="commissioner-card-heading">
+            <div><p class="eyebrow">Current week</p><h2 class="display">Schedule, Game IDs & BYEs</h2></div>
+            <span class="commissioner-muted" data-schedule-summary>Loading…</span>
+          </div>
+          <div class="commissioner-byes" data-byes></div>
+          <div class="commissioner-schedule" data-schedule></div>
+        </section>
+
+        <div class="commissioner-grid commissioner-grid-2">
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Current week</p><h2 class="display">Live Competition</h2></div>
+              <span class="commissioner-muted">Provisional</span>
+            </div>
+            <div data-live-top-five></div>
+          </section>
+
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Season race</p><h2 class="display">Top 5</h2></div>
+            </div>
+            <div data-season-top-five></div>
+          </section>
+        </div>
+
+        <div class="commissioner-grid commissioner-grid-2">
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">2026 season</p><h2 class="display">Around the Pool</h2></div>
+            </div>
+            <div class="commissioner-stat-grid" data-around-pool></div>
+          </section>
+
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Season history</p><h2 class="display">Weekly Winners</h2></div>
+            </div>
+            <div data-weekly-winners></div>
+          </section>
+        </div>
+
+        <section class="card commissioner-card commissioner-control-preview">
+          <div class="commissioner-card-heading">
+            <div><p class="eyebrow">Actions</p><h2 class="display">Commissioner Control Center</h2></div>
+            <span class="status status-upcoming">Read-only checkpoint</span>
+          </div>
+          <p class="commissioner-muted">Pick Override, Player Controls, and Recovery Tools will be enabled in the next checkpoint after this read-only page is approved.</p>
+          <div class="commissioner-control-groups">
+            <div class="commissioner-control-group"><strong>Pick Actions</strong><span>Pick Override</span></div>
+            <div class="commissioner-control-group"><strong>Player Controls</strong><span>Generate / Rotate · Revoke · Activate / Deactivate</span></div>
+            <div class="commissioner-control-group"><strong>Recovery Tools</strong><span>Sync Scores · Preview Rollover · Retry Rollover</span></div>
+          </div>
+        </section>
+
+        <div class="commissioner-grid commissioner-grid-2">
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Automation</p><h2 class="display">System Health</h2></div>
+            </div>
+            <div data-system-health></div>
+          </section>
+
+          <section class="card commissioner-card">
+            <div class="commissioner-card-heading">
+              <div><p class="eyebrow">Audit trail</p><h2 class="display">Recent Commissioner Activity</h2></div>
+              <span class="commissioner-muted">Last 8</span>
+            </div>
+            <div data-recent-activity></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="commissioner-error-wrap" data-error-view hidden>
+      <div class="container">
+        <section class="card commissioner-login-card">
+          <p class="eyebrow">Commissioner</p>
+          <h1 class="display">Dashboard unavailable</h1>
+          <p data-fatal-message>Sonoran Games could not load the Commissioner dashboard.</p>
+          <button class="button" type="button" data-return-login>Return to Sign In</button>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a>
+      <div class="footer-copy">
+        <p>Friendly competition. Serious bragging rights.</p>
+        <p>© <span data-copyright-year>2026</span> Project605 LLC. All rights reserved.</p>
+        <p>Sonoran Games, including its original content, design, and software, may not be reproduced without permission.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/assets/js/navigation.js"></script>
+  <script src="/assets/js/commissioner.js"></script>
+</body>
+</html>
