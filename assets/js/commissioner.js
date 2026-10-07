@@ -132,6 +132,53 @@
     const scheduleHealthy=Number(schedule.game_count||0)>0 &&
       validGameCount===Number(schedule.game_count||0);
 
+    const relativeMinutes=value=>{
+      if(!value)return null;
+      const d=new Date(value);
+      if(Number.isNaN(d.getTime()))return null;
+      return Math.max(0,Math.round((Date.now()-d.getTime())/60000));
+    };
+
+    const ageLabel=minutes=>{
+      if(minutes===null)return '';
+      if(minutes<1)return 'just now';
+      if(minutes===1)return '1 min ago';
+      if(minutes<60)return `${minutes} min ago`;
+      const hours=Math.round(minutes/60);
+      return `${hours} hr${hours===1?'':'s'} ago`;
+    };
+
+    let controllerText=controllerInstalled?'✓ Trigger installed':'✕ Missing';
+    let controllerClass=controllerInstalled?'commissioner-health-ok':'commissioner-health-warning';
+    const controllerAge=relativeMinutes(h.automation_controller_last_run_utc);
+
+    if(controllerInstalled && controllerAge!==null){
+      if(controllerAge<=30){
+        controllerText=`✓ Healthy · ${ageLabel(controllerAge)}`;
+        controllerClass='commissioner-health-ok';
+      }else{
+        controllerText=`⚠ Last check ${ageLabel(controllerAge)}`;
+        controllerClass='commissioner-health-warning';
+      }
+    }else if(controllerInstalled){
+      controllerText='Trigger installed · heartbeat pending';
+      controllerClass='';
+    }
+
+    let feedText='Awaiting first instrumented sync';
+    let feedClass='';
+    const feed=h.nfl_data_feed||{};
+
+    if(feed.last_error_utc){
+      const errorAge=relativeMinutes(feed.last_error_utc);
+      feedText=`⚠ Failed ${ageLabel(errorAge)}${feed.last_error_message?` · ${feed.last_error_message}`:''}`;
+      feedClass='commissioner-health-warning';
+    }else if(feed.last_success_utc){
+      const successAge=relativeMinutes(feed.last_success_utc);
+      feedText=`✓ Last sync successful · ${ageLabel(successAge)}`;
+      feedClass='commissioner-health-ok';
+    }
+
     let freshnessText='Not available';
     let freshnessClass='';
     if(h.last_score_sync_utc){
@@ -151,14 +198,22 @@
       }
     }
 
+    let rolloverText='Not available';
+    let rolloverClass='';
+    if(h.last_rollover?.timestamp_utc){
+      const priorWeek=Math.max(1,Number(p.week||0)-1);
+      rolloverText=`✓ Week ${priorWeek} → Week ${Number(p.week||0)} · ${formatLocal(h.last_rollover.timestamp_utc)}`;
+      rolloverClass='commissioner-health-ok';
+    }
+
     let responseText='Not measured';
     let responseClass='';
     if(Number.isFinite(lastDashboardResponseMs)){
       const seconds=lastDashboardResponseMs/1000;
-      if(seconds<2){
+      if(seconds<3){
         responseText=`✓ ${seconds.toFixed(1)} sec`;
         responseClass='commissioner-health-ok';
-      }else if(seconds<=5){
+      }else if(seconds<=6){
         responseText=`${seconds.toFixed(1)} sec`;
       }else{
         responseText=`⚠ ${seconds.toFixed(1)} sec`;
@@ -169,11 +224,15 @@
     t.innerHTML=`
       <div class="commissioner-health-row">
         <div><strong>Automation Controller</strong></div>
-        <span class="${controllerInstalled?'commissioner-health-ok':'commissioner-health-warning'}">${controllerInstalled?'✓ Healthy':'✕ Missing'}</span>
+        <span class="${controllerClass}">${escapeHtml(controllerText)}</span>
       </div>
       <div class="commissioner-health-row">
         <div><strong>Live Score Sync</strong></div>
         <span>${h.live_score_sync_active?'Active':'Idle'}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>NFL Data Feed</strong></div>
+        <span class="${feedClass}">${escapeHtml(feedText)}</span>
       </div>
       <div class="commissioner-health-row">
         <div><strong>Score Data Freshness</strong></div>
@@ -182,6 +241,10 @@
       <div class="commissioner-health-row">
         <div><strong>Current Week Schedule</strong></div>
         <span class="${scheduleHealthy?'commissioner-health-ok':'commissioner-health-warning'}">${scheduleHealthy?`✓ ${validGameCount}/${Number(schedule.game_count||0)} games valid`:`⚠ ${validGameCount}/${Number(schedule.game_count||0)} games valid`}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>Last Weekly Rollover</strong></div>
+        <span class="${rolloverClass}">${escapeHtml(rolloverText)}</span>
       </div>
       <div class="commissioner-health-row">
         <div><strong>Admin API Response</strong></div>
