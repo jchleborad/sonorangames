@@ -35,6 +35,7 @@
   let dashboardData = null;
   let pendingOverride = null;
   let lastOverrideResult = null;
+  let lastDashboardResponseMs = null;
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 
@@ -109,13 +110,88 @@
   }
 
   function renderWinners(p){
-    const t=document.querySelector('[data-weekly-winners]');if(!t)return;const rows=p.weekly_winners||[];
+    const t=document.querySelector('[data-weekly-winners]');if(!t)return;
+    const rows=(p.weekly_winners||[])
+      .slice()
+      .sort((a,b)=>Number(a.week||0)-Number(b.week||0))
+      .slice(-5);
     t.innerHTML=rows.length?`<div class="commissioner-list">${rows.map(r=>`<div class="commissioner-list-row"><div><strong>Week ${Number(r.week)} — ${escapeHtml(r.player_name)}</strong></div><span>${Number(r.correct||0)}-${Number(r.incorrect||0)}</span></div>`).join('')}</div>`:'<div class="commissioner-empty">No weekly winners have been graded yet.</div>';
   }
 
   function renderHealth(p){
-    const t=document.querySelector('[data-system-health]');if(!t)return;const h=p.system_health||{},r=h.rollover_status||{},a=!!h.automation_controller_installed,l=!h.legacy_score_sync_trigger_present;
-    t.innerHTML=`<div class="commissioner-health-row"><div><strong>Automation Controller</strong></div><span class="${a?'commissioner-health-ok':'commissioner-health-warning'}">${a?'✓ Healthy':'✕ Missing'}</span></div><div class="commissioner-health-row"><div><strong>Live Score Sync</strong></div><span>${h.live_score_sync_active?'Active':'Idle'}</span></div><div class="commissioner-health-row"><div><strong>Legacy Score Trigger</strong></div><span class="${l?'commissioner-health-ok':'commissioner-health-warning'}">${l?'✓ Not present':'⚠ Present'}</span></div><div class="commissioner-health-row"><div><strong>Last Stored Score Update</strong></div><span>${h.last_score_sync_utc?escapeHtml(formatLocal(h.last_score_sync_utc)):'Not available'}</span></div><div class="commissioner-health-row"><div><strong>Rollover Ready</strong></div><span>${r.ready_to_roll===true?'Yes':'No'}</span></div>`;
+    const t=document.querySelector('[data-system-health]');if(!t)return;
+
+    const h=p.system_health||{};
+    const w=p.week_status||{};
+    const schedule=p.schedule||{};
+    const games=Array.isArray(schedule.games)?schedule.games:[];
+    const controllerInstalled=!!h.automation_controller_installed;
+    const legacyAbsent=!h.legacy_score_sync_trigger_present;
+
+    const validGameCount=games.filter(game=>String(game.game_id||'').trim()).length;
+    const scheduleHealthy=Number(schedule.game_count||0)>0 &&
+      validGameCount===Number(schedule.game_count||0);
+
+    let freshnessText='Not available';
+    let freshnessClass='';
+    if(h.last_score_sync_utc){
+      const lastUpdate=new Date(h.last_score_sync_utc);
+      const ageMinutes=(Date.now()-lastUpdate.getTime())/60000;
+
+      if(Number(w.live_games||0)>0){
+        if(ageMinutes<=5){
+          freshnessText=`✓ Current · ${formatLocal(h.last_score_sync_utc)}`;
+          freshnessClass='commissioner-health-ok';
+        }else{
+          freshnessText=`⚠ Stale · ${formatLocal(h.last_score_sync_utc)}`;
+          freshnessClass='commissioner-health-warning';
+        }
+      }else{
+        freshnessText=`Idle · Last update ${formatLocal(h.last_score_sync_utc)}`;
+      }
+    }
+
+    let responseText='Not measured';
+    let responseClass='';
+    if(Number.isFinite(lastDashboardResponseMs)){
+      const seconds=lastDashboardResponseMs/1000;
+      if(seconds<2){
+        responseText=`✓ ${seconds.toFixed(1)} sec`;
+        responseClass='commissioner-health-ok';
+      }else if(seconds<=5){
+        responseText=`${seconds.toFixed(1)} sec`;
+      }else{
+        responseText=`⚠ ${seconds.toFixed(1)} sec`;
+        responseClass='commissioner-health-warning';
+      }
+    }
+
+    t.innerHTML=`
+      <div class="commissioner-health-row">
+        <div><strong>Automation Controller</strong></div>
+        <span class="${controllerInstalled?'commissioner-health-ok':'commissioner-health-warning'}">${controllerInstalled?'✓ Healthy':'✕ Missing'}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>Live Score Sync</strong></div>
+        <span>${h.live_score_sync_active?'Active':'Idle'}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>Score Data Freshness</strong></div>
+        <span class="${freshnessClass}">${escapeHtml(freshnessText)}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>Current Week Schedule</strong></div>
+        <span class="${scheduleHealthy?'commissioner-health-ok':'commissioner-health-warning'}">${scheduleHealthy?`✓ ${validGameCount}/${Number(schedule.game_count||0)} games valid`:`⚠ ${validGameCount}/${Number(schedule.game_count||0)} games valid`}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>Admin API Response</strong></div>
+        <span class="${responseClass}">${escapeHtml(responseText)}</span>
+      </div>
+      <div class="commissioner-health-row">
+        <div><strong>Legacy 5-Min Sync Trigger</strong></div>
+        <span class="${legacyAbsent?'commissioner-health-ok':'commissioner-health-warning'}">${legacyAbsent?'✓ Not present':'⚠ Present'}</span>
+      </div>
+    `;
   }
 
   function renderActivity(p){
@@ -328,7 +404,12 @@
   async function loadDashboard(){
     const token=getSessionToken();if(!token){showLogin();return;}
     if(refreshButton){refreshButton.disabled=true;refreshButton.textContent='Refreshing…';}
-    try{renderDashboard(await postJson({action:'getCommissionerDashboard',session_token:token}));}
+    const started=performance.now();
+    try{
+      const payload=await postJson({action:'getCommissionerDashboard',session_token:token});
+      lastDashboardResponseMs=performance.now()-started;
+      renderDashboard(payload);
+    }
     catch(e){if(['COMMISSIONER_SESSION_REQUIRED','INVALID_COMMISSIONER_SESSION','COMMISSIONER_SESSION_EXPIRED'].includes(e.code)){clearSessionToken();showLogin();if(loginMessage)loginMessage.textContent=e.message;}else showFatal(e.message);}
     finally{if(refreshButton){refreshButton.disabled=false;refreshButton.textContent='Refresh Dashboard';}}
   }

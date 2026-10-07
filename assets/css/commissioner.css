@@ -46,6 +46,7 @@
 .commissioner-bye-chip{display:inline-flex;margin:4px 6px 4px 0;padding:7px 10px;border-radius:999px;background:var(--navy);color:var(--sand);font-size:.75rem;font-weight:800}
 .commissioner-schedule{display:grid;gap:18px}
 .commissioner-day-group h3{margin:0 0 8px;color:var(--copper);font:800 1rem var(--font-display);letter-spacing:.07em;text-transform:uppercase}
+.commissioner-day-group + .commissioner-day-group{margin-top:6px;padding-top:22px;border-top:2px solid rgba(23,42,70,.16)}
 .commissioner-game-row{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--border)}
 .commissioner-game-row:last-child{border-bottom:0}
 .commissioner-game-time{color:var(--muted);font-size:.78rem;font-weight:700}.commissioner-game-matchup{min-width:0}.commissioner-game-matchup strong{display:block}
