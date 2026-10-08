@@ -72,6 +72,16 @@
 @media(max-width:900px){.commissioner-hero-row{align-items:stretch;flex-direction:column}.commissioner-hero-actions{min-width:0}.commissioner-grid-2{grid-template-columns:1fr}.commissioner-control-groups{grid-template-columns:1fr}.commissioner-alerts{grid-template-columns:1fr}}
 @media(max-width:640px){.commissioner-login-wrap,.commissioner-error-wrap{padding:42px 0 72px}.commissioner-login-card,.commissioner-card{padding:20px}.commissioner-hero{padding:30px 0 22px}.commissioner-title{font-size:3rem}.commissioner-action-row{align-items:stretch;flex-direction:column}.commissioner-text-button{min-height:40px}.commissioner-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.commissioner-card-heading{align-items:flex-start;flex-direction:column}.commissioner-game-row{grid-template-columns:1fr;gap:5px}.commissioner-game-id{justify-content:flex-start}.commissioner-stat-grid{grid-template-columns:1fr}}
 
+
+/* Commissioner Dashboard overview hierarchy */
+.commissioner-overview{display:grid;gap:10px}
+.commissioner-overview-heading{display:grid;gap:3px}
+.commissioner-overview-heading h2{margin:0;font-size:2rem;line-height:1}
+.commissioner-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.commissioner-alert-stack,.commissioner-system-alerts{display:grid;gap:10px;align-content:start}
+.commissioner-alert-stack:empty{min-height:0}
+@media(max-width:900px){.commissioner-state-grid{grid-template-columns:1fr}}
+
 /* Pick Override — write-enabled Commissioner action */
 .commissioner-control-center{border:1px solid var(--border)}
 .commissioner-control-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:18px}

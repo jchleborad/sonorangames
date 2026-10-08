@@ -64,8 +64,37 @@
   const score=value=>Number(value||0).toFixed(2);
 
   function renderAlerts(p){
-    const t=document.querySelector('[data-alerts]'); if(!t)return;
-    t.innerHTML=(p.alerts||[]).map(a=>{const l=String(a.level||'').toUpperCase();const cls=l==='OK'?'is-ok':l==='ERROR'?'is-error':'is-attention';const s=l==='OK'?'✓':l==='ERROR'?'✕':'⚠';return `<div class="commissioner-alert ${cls}"><span class="commissioner-alert-symbol">${s}</span><span>${escapeHtml(a.message)}</span></div>`;}).join('');
+    const gameTarget=document.querySelector('[data-game-alerts]');
+    const playerTarget=document.querySelector('[data-player-alerts]');
+    const systemTarget=document.querySelector('[data-system-alerts]');
+    if(!gameTarget||!playerTarget||!systemTarget)return;
+
+    const alerts=Array.isArray(p.alerts)?p.alerts:[];
+    const playerOrder={ZERO_PICK_PLAYERS:0,INCOMPLETE_PLAYERS:1};
+
+    const playerAlerts=alerts
+      .filter(a=>['ZERO_PICK_PLAYERS','INCOMPLETE_PLAYERS'].includes(String(a.code||'')))
+      .sort((a,b)=>(playerOrder[String(a.code||'')]??99)-(playerOrder[String(b.code||'')]??99));
+
+    const gameAlerts=alerts.filter(a=>String(a.code||'')==='UNUSUAL_KICKOFF');
+
+    const systemAlerts=alerts.filter(a=>![
+      'ZERO_PICK_PLAYERS',
+      'INCOMPLETE_PLAYERS',
+      'UNUSUAL_KICKOFF'
+    ].includes(String(a.code||'')));
+
+    const alertHtml=a=>{
+      const l=String(a.level||'').toUpperCase();
+      const cls=l==='OK'?'is-ok':l==='ERROR'?'is-error':'is-attention';
+      const s=l==='OK'?'✓':l==='ERROR'?'✕':'⚠';
+      return `<div class="commissioner-alert ${cls}"><span class="commissioner-alert-symbol">${s}</span><span>${escapeHtml(a.message)}</span></div>`;
+    };
+
+    gameTarget.innerHTML=gameAlerts.map(alertHtml).join('');
+    playerTarget.innerHTML=playerAlerts.map(alertHtml).join('');
+    systemTarget.innerHTML=systemAlerts.map(alertHtml).join('');
+    systemTarget.hidden=systemAlerts.length===0;
   }
 
   function renderWeek(p){
