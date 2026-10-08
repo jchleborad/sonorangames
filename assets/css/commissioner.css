@@ -108,9 +108,11 @@
   border-left:1px solid var(--border)
 }
 .commissioner-participation-progress-label{
-  color:var(--ink);
-  font-size:.84rem;
-  font-weight:700
+  color:var(--copper);
+  font-size:.74rem;
+  font-weight:800;
+  letter-spacing:.13em;
+  text-transform:uppercase
 }
 .commissioner-participation-progress-shell{
   position:relative;
