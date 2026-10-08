@@ -54,28 +54,119 @@
     return `sg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
+  const TRANSIENT_HTTP_STATUSES = new Set([404, 408, 429, 500, 502, 503, 504]);
+  const RETRY_DELAYS_MS = [0, 1500, 3000];
+
+  function wait(milliseconds) {
+    return new Promise(resolve => window.setTimeout(resolve, milliseconds));
+  }
+
+  async function fetchJsonWithRetry(url, options, failureMessage) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt += 1) {
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay) await wait(delay);
+
+      try {
+        const response = await fetch(url, options);
+
+        if (!response.ok) {
+          const error = new Error(`${failureMessage} (HTTP ${response.status})`);
+          error.status = response.status;
+          error.retryable = TRANSIENT_HTTP_STATUSES.has(response.status);
+
+          if (error.retryable && attempt < RETRY_DELAYS_MS.length - 1) {
+            lastError = error;
+            continue;
+          }
+
+          throw error;
+        }
+
+        try {
+          return await response.json();
+        } catch (error) {
+          const parseError = new Error(failureMessage);
+          parseError.retryable = true;
+          parseError.cause = error;
+
+          if (attempt < RETRY_DELAYS_MS.length - 1) {
+            lastError = parseError;
+            continue;
+          }
+
+          throw parseError;
+        }
+
+      } catch (error) {
+        const isNetworkFailure =
+          error instanceof TypeError ||
+          error.retryable === true;
+
+        if (
+          isNetworkFailure &&
+          attempt < RETRY_DELAYS_MS.length - 1
+        ) {
+          lastError = error;
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw lastError || new Error(failureMessage);
+  }
+
   async function loadWeeklyCard() {
     const url = new URL(API_URL);
     url.searchParams.set('action', 'getWeeklyCard');
     url.searchParams.set('api_version', API_VERSION);
     url.searchParams.set('competition_id', COMPETITION_ID);
     url.searchParams.set('player_token', playerToken);
-    const response = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
-    if (!response.ok) throw new Error('The Sonoran Games server could not be reached.');
-    const payload = await response.json();
-    if (!payload.ok) throw new Error(apiErrorMessage(payload, 'Your picks could not be loaded.'));
+
+    const payload = await fetchJsonWithRetry(
+      url.toString(),
+      {
+        method: 'GET',
+        redirect: 'follow'
+      },
+      'The Sonoran Games server could not be reached.'
+    );
+
+    if (!payload.ok) {
+      throw new Error(
+        apiErrorMessage(
+          payload,
+          'Your picks could not be loaded.'
+        )
+      );
+    }
+
     return payload;
   }
 
   async function saveWeeklyCard(payload) {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-    if (!response.ok) throw new Error('The Sonoran Games server could not save your picks.');
-    return response.json();
+    /*
+     * IMPORTANT:
+     * The same payload — including the same submission_id — is reused
+     * for every retry. The backend treats submission_id as idempotent,
+     * so a save that completed before Google's response failed can be
+     * safely recognized on the retry instead of creating a second save.
+     */
+    return fetchJsonWithRetry(
+      API_URL,
+      {
+        method: 'POST',
+        redirect: 'follow',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(payload)
+      },
+      'The Sonoran Games server could not confirm that your picks were saved.'
+    );
   }
 
   function formatDate(iso, options) {
