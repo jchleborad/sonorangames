@@ -107,9 +107,50 @@
   }
 
   function renderParticipation(p){
-    const x=p.participation||{},s=document.querySelector('[data-participation-summary]'),t=document.querySelector('[data-incomplete-players]');
-    if(s)s.textContent=`${Number(x.complete_player_count||0)}/${Number(x.active_player_count||0)}`;
-    if(!t)return; const rows=x.incomplete_players||[];
+    const x=p.participation||{};
+    const t=document.querySelector('[data-incomplete-players]');
+    const playerCount=document.querySelector('[data-participation-player-count]');
+    const completeCount=document.querySelector('[data-participation-complete-count]');
+    const progress=document.querySelector('[data-participation-progress]');
+    const progressTrack=document.querySelector('[data-participation-progress-track]');
+    const progressFill=document.querySelector('[data-participation-progress-fill]');
+    const progressPercent=document.querySelector('[data-participation-progress-percent]');
+
+    const activePlayers=Math.max(0,Number(x.active_player_count||0));
+    const completedPlayers=Math.max(0,Math.min(Number(x.complete_player_count||0),activePlayers));
+    const percent=activePlayers?Math.round((completedPlayers/activePlayers)*100):0;
+
+    if(playerCount){
+      playerCount.textContent=`${activePlayers} Player${activePlayers===1?'':'s'}`;
+    }
+
+    if(completeCount){
+      completeCount.textContent=String(completedPlayers);
+    }
+
+    if(progress){
+      progress.style.setProperty('--participation-progress',`${percent}%`);
+    }
+
+    if(progressTrack){
+      progressTrack.setAttribute('aria-valuenow',String(percent));
+      progressTrack.setAttribute(
+        'aria-valuetext',
+        `${completedPlayers} of ${activePlayers} player cards complete`
+      );
+    }
+
+    if(progressFill){
+      progressFill.style.width=`${percent}%`;
+    }
+
+    if(progressPercent){
+      progressPercent.textContent=`${percent}%`;
+      progressPercent.hidden=percent===0;
+    }
+
+    if(!t)return;
+    const rows=x.incomplete_players||[];
     t.innerHTML=rows.length?`<div class="commissioner-list">${rows.map(r=>`<div class="commissioner-list-row ${r.no_picks?'commissioner-zero-picks':''}"><div><strong>${escapeHtml(r.player_name)}</strong></div><span>${Number(r.completed_picks||0)}/${Number(r.total_games||0)} · ${Number(r.picks_remaining||0)} left</span></div>`).join('')}</div>`:'<div class="commissioner-empty">All active players have complete cards.</div>';
   }
 
