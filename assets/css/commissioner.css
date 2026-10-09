@@ -236,3 +236,54 @@
   .commissioner-confirm-actions{flex-direction:column-reverse}
   .commissioner-confirm-actions .button,.commissioner-secondary-button{width:100%}
 }
+
+/* Dashboard usage-driven layout refinements */
+.commissioner-alert-byes{
+  border-left:4px solid var(--navy)
+}
+.commissioner-alert-byes strong{
+  color:var(--navy);
+  font-size:.76rem;
+  letter-spacing:.08em
+}
+.commissioner-health-row-feed{
+  grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)
+}
+.commissioner-health-row-feed>span{
+  min-width:0;
+  text-align:right;
+  overflow-wrap:anywhere
+}
+.commissioner-health-details{
+  grid-column:1/-1;
+  min-width:0;
+  margin-top:4px
+}
+.commissioner-health-details summary{
+  width:max-content;
+  cursor:pointer;
+  color:var(--copper);
+  font-size:.74rem;
+  font-weight:800
+}
+.commissioner-health-details div{
+  margin-top:8px;
+  padding:10px 12px;
+  max-height:180px;
+  overflow:auto;
+  border-radius:10px;
+  background:var(--linen);
+  color:var(--muted);
+  font:600 .72rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word
+}
+@media(max-width:640px){
+  .commissioner-health-row-feed{
+    grid-template-columns:1fr
+  }
+  .commissioner-health-row-feed>span{
+    text-align:left
+  }
+}

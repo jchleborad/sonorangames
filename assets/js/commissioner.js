@@ -78,6 +78,10 @@
 
     const gameAlerts=alerts.filter(a=>String(a.code||'')==='UNUSUAL_KICKOFF');
 
+    const byeTeams=Array.isArray(p.schedule?.bye_teams)
+      ? p.schedule.bye_teams.filter(Boolean)
+      : [];
+
     const systemAlerts=alerts.filter(a=>![
       'ZERO_PICK_PLAYERS',
       'INCOMPLETE_PLAYERS',
@@ -91,7 +95,14 @@
       return `<div class="commissioner-alert ${cls}"><span class="commissioner-alert-symbol">${s}</span><span>${escapeHtml(a.message)}</span></div>`;
     };
 
-    gameTarget.innerHTML=gameAlerts.map(alertHtml).join('');
+    const byeHtml=byeTeams.length
+      ? `<div class="commissioner-alert commissioner-alert-byes">
+          <span class="commissioner-alert-symbol">•</span>
+          <span><strong>BYE TEAMS</strong> · ${escapeHtml(byeTeams.join(' · '))}</span>
+        </div>`
+      : '';
+
+    gameTarget.innerHTML=gameAlerts.map(alertHtml).join('')+byeHtml;
     playerTarget.innerHTML=playerAlerts.map(alertHtml).join('');
     systemTarget.innerHTML=systemAlerts.map(alertHtml).join('');
     systemTarget.hidden=systemAlerts.length===0;
@@ -241,7 +252,9 @@
 
     if(feed.last_error_utc){
       const errorAge=relativeMinutes(feed.last_error_utc);
-      feedText=`⚠ Failed ${ageLabel(errorAge)}${feed.last_error_message?` · ${feed.last_error_message}`:''}`;
+      const statusMatch=String(feed.last_error_message||'').match(/Status:\s*(\d{3})/i);
+      const statusText=statusMatch?` · HTTP ${statusMatch[1]}`:'';
+      feedText=`⚠ Failed ${ageLabel(errorAge)}${statusText}`;
       feedClass='commissioner-health-warning';
     }else if(feed.last_success_utc){
       const successAge=relativeMinutes(feed.last_success_utc);
@@ -300,9 +313,15 @@
         <div><strong>Live Score Sync</strong></div>
         <span>${h.live_score_sync_active?'Active':'Idle'}</span>
       </div>
-      <div class="commissioner-health-row">
+      <div class="commissioner-health-row commissioner-health-row-feed">
         <div><strong>NFL Data Feed</strong></div>
         <span class="${feedClass}">${escapeHtml(feedText)}</span>
+        ${feed.last_error_message?`
+          <details class="commissioner-health-details">
+            <summary>Details</summary>
+            <div>${escapeHtml(feed.last_error_message)}</div>
+          </details>
+        `:''}
       </div>
       <div class="commissioner-health-row">
         <div><strong>Score Data Freshness</strong></div>
