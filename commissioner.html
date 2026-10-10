@@ -209,6 +209,14 @@ Open Pick Override
 <button class="commissioner-secondary-button" type="button" data-player-action="ACTIVATE_PLAYER" disabled>Activate Player</button>
 <button class="commissioner-secondary-button" type="button" data-player-action="DEACTIVATE_PLAYER" disabled>Deactivate Player</button>
 </div>
+<div class="commissioner-player-actions"><button class="commissioner-secondary-button" data-controls-add type="button">Add Player</button></div>
+<form data-controls-add-form hidden>
+<h3>Add Player</h3>
+<p>New players start inactive with no access link. Activate separately when they should participate in the NFL pool.</p>
+<label class="commissioner-field"><span>Display name</span><input class="commissioner-input" data-controls-add-name required minlength="2" maxlength="60" autocomplete="off" placeholder="First name and last initial"></label>
+<label class="commissioner-field"><span>Email (optional)</span><input class="commissioner-input" data-controls-add-email type="email" maxlength="254" autocomplete="off"></label>
+<div class="commissioner-confirm-actions"><button class="commissioner-secondary-button" data-controls-add-cancel type="button">Cancel</button><button class="button" type="submit">Review New Player</button></div>
+</form>
 <section class="commissioner-player-confirm" data-controls-confirm hidden>
 <h3>Confirm Player Action</h3><p data-controls-preview></p>
 <div class="commissioner-confirm-actions"><button class="commissioner-secondary-button" data-controls-cancel type="button">Cancel</button><button class="button" data-controls-submit type="button">Confirm Action</button></div>

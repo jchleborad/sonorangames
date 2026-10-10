@@ -451,3 +451,6 @@
 [data-recovery-message][data-state="error"]{color:var(--danger)}
 [data-recovery-blockers]{padding-left:22px;margin-bottom:16px}
 [data-recovery-blockers] li{margin-bottom:6px}
+
+[data-controls-add-form][hidden]{display:none}
+[data-controls-add-form]{margin-top:1rem;padding-top:1rem;border-top:1px solid #c9cec9}

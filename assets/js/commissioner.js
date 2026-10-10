@@ -723,6 +723,8 @@
   const controlsLink=document.querySelector('[data-controls-link]');
   const controlsLinkPanel=document.querySelector('[data-controls-link-panel]');
   const controlsButtons=Array.from(document.querySelectorAll('[data-player-action]'));
+  const addForm=document.querySelector('[data-controls-add-form]');
+  const addButton=document.querySelector('[data-controls-add]');
   let controlsPlayers=[];
   let controlsBusy=false;
   let controlsPending=null;
@@ -744,10 +746,12 @@
     const p=selectedControlsPlayer();
     const state=document.querySelector('[data-controls-state]');
     if(state)state.textContent=p?`${p.active?'Active':'Inactive'} · ${Number(p.active_link_count||0)} stored link(s)`:'';
-    if(controlsPlayer)controlsPlayer.disabled=controlsBusy;
+    if(controlsPlayer)controlsPlayer.disabled=controlsBusy||!!controlsPending||!addForm.hidden;
+    addButton.disabled=controlsBusy||!!controlsPending;
+    addForm.querySelectorAll('input,button').forEach(el=>el.disabled=controlsBusy||!!controlsPending);
     controlsButtons.forEach(button=>{
       const action=button.dataset.playerAction;
-      button.disabled=controlsBusy||!!controlsPending||!p||
+      button.disabled=controlsBusy||!!controlsPending||!addForm.hidden||!p||
         (['GENERATE_LINK','ROTATE_LINK','DEACTIVATE_PLAYER'].includes(action)&&!p.active)||
         (action==='ACTIVATE_PLAYER'&&p.active)||
         (action==='REVOKE_LINKS'&&!Number(p.active_link_count));
@@ -779,7 +783,7 @@
     finally{controlsBusy=false;updateControlsState();}
   }
   function resetControls(){
-    clearControlsLink();controlsPending=null;controlsPlayers=[];
+    clearControlsLink();controlsPending=null;controlsPlayers=[];addForm.reset();addForm.hidden=true;
     if(controlsConfirm)controlsConfirm.hidden=true;
     if(controlsPlayer)controlsPlayer.replaceChildren(new Option('Choose player…',''));
     setControlsMessage('');
@@ -789,15 +793,16 @@
     const pending={...controlsPending};const token=getSessionToken();
     controlsBusy=true;updateControlsState();controlsSubmit.textContent='Working…';setControlsMessage('');clearControlsLink();
     try{
-      const result=await postJson({action:'runCommissionerPlayerAction',session_token:token,player_id:pending.player_id,player_action:pending.action});
+      const result=await postJson({action:'runCommissionerPlayerAction',session_token:token,player_id:pending.player_id,player_action:pending.action,...(pending.action==='ADD_PLAYER'?{display_name:pending.display_name,email:pending.email,confirmed:true}:{})});
       controlsPending=null;controlsConfirm.hidden=true;
+      if(pending.action==='ADD_PLAYER'){addForm.reset();addForm.hidden=true;}
       if(getSessionToken()!==token||!controlsDialog.open)return;
       setControlsMessage(result.message||'Player action completed.','success');
       if(result.player_link){
         controlsLink.value=result.player_link;controlsLinkPanel.hidden=false;
       }
       // Keep the completed result/link visible even if subsequent refresh fails.
-      try{await fetchControlsPlayers();}catch(error){if(!controlsAuthError(error)){controlsPlayers=[];setControlsMessage(controlsMessage.textContent+' Player list could not refresh. Close and reopen Player Controls before another action.','error');}}
+      try{await fetchControlsPlayers();if(pending.action==='ADD_PLAYER')controlsPlayer.value=result.player.player_id;}catch(error){if(!controlsAuthError(error)){controlsPlayers=[];setControlsMessage(controlsMessage.textContent+' Player list could not refresh. Close and reopen Player Controls before another action.','error');}}
       if(getSessionToken()===token)await loadDashboard();
     }catch(error){
       controlsPending=null;controlsConfirm.hidden=true;
@@ -810,6 +815,23 @@
     }
   }
   if(controlsDialog){
+    addButton.addEventListener('click',()=>{
+      if(controlsBusy||controlsPending)return;
+      clearControlsLink();addForm.hidden=!addForm.hidden;setControlsMessage('');updateControlsState();
+      if(!addForm.hidden)document.querySelector('[data-controls-add-name]').focus();
+    });
+    document.querySelector('[data-controls-add-cancel]').addEventListener('click',()=>{addForm.reset();addForm.hidden=true;updateControlsState();});
+    addForm.addEventListener('submit',event=>{
+      event.preventDefault();if(controlsBusy||controlsPending||!addForm.reportValidity())return;
+      const display_name=document.querySelector('[data-controls-add-name]').value.trim().replace(/\s+/g,' ');
+      const email=document.querySelector('[data-controls-add-email]').value.trim();
+      if(controlsPlayers.some(p=>p.display_name.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase()===display_name.normalize('NFKC').toLowerCase())){
+        setControlsMessage('That display name already exists. Select the existing player or use a distinguishing name.','error');return;
+      }
+      controlsPending={action:'ADD_PLAYER',display_name,email};
+      document.querySelector('[data-controls-preview]').textContent=`Add ${display_name}${email?' ('+email+')':''} as an inactive player with no access link. A permanent player ID will be assigned automatically.`;
+      controlsConfirm.hidden=false;setControlsMessage('');updateControlsState();controlsSubmit.focus();
+    });
     document.querySelector('[data-open-player-controls]').addEventListener('click',openControls);
     document.querySelector('[data-close-player-controls]').addEventListener('click',()=>{if(!controlsBusy)controlsDialog.close();});
     controlsDialog.addEventListener('cancel',event=>{if(controlsBusy)event.preventDefault();});
