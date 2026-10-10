@@ -432,5 +432,14 @@
   cursor:not-allowed
 }
 [data-controls-message][data-state="neutral"]{color:var(--ink)}
-[data-controls-message][data-state="success"]{color:#355535}
+[data-controls-message][data-state="success"]{color:#16803a}
 [data-controls-message][data-state="error"]{color:var(--danger)}
+
+.commissioner-player-actions button:not(:disabled){
+  border:2px solid #4f6b4f;
+  cursor:pointer
+}
+.commissioner-player-actions button:not(:disabled):hover{
+  border-color:#355535;
+  background:#f0f5ee
+}
