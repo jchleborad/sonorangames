@@ -454,3 +454,5 @@
 
 [data-controls-add-form][hidden]{display:none}
 [data-controls-add-form]{margin-top:1rem;padding-top:1rem;border-top:1px solid #c9cec9}
+
+[data-controls-actions] + .commissioner-player-actions{margin-top:10px}
