@@ -58,7 +58,7 @@
     return result;
   }
 
-  function showLogin(){loginView.hidden=false;dashboardView.hidden=true;errorView.hidden=true;setTimeout(()=>passwordInput&&passwordInput.focus(),50);}
+  function showLogin(){if(controlsDialog?.open)controlsDialog.close();resetControls();loginView.hidden=false;dashboardView.hidden=true;errorView.hidden=true;setTimeout(()=>passwordInput&&passwordInput.focus(),50);}
   function showDashboard(){loginView.hidden=true;dashboardView.hidden=false;errorView.hidden=true;}
   function showFatal(message){loginView.hidden=true;dashboardView.hidden=true;errorView.hidden=false;const n=document.querySelector('[data-fatal-message]');if(n)n.textContent=message;}
 
@@ -712,6 +712,118 @@
 
   if(overrideDialog){
     overrideDialog.addEventListener('cancel',()=>{pendingOverride=null;});
+  }
+
+  // Player Controls: links stay in memory/DOM only, never browser storage.
+  const controlsDialog=document.querySelector('[data-player-controls-dialog]');
+  const controlsPlayer=document.querySelector('[data-controls-player]');
+  const controlsMessage=document.querySelector('[data-controls-message]');
+  const controlsConfirm=document.querySelector('[data-controls-confirm]');
+  const controlsSubmit=document.querySelector('[data-controls-submit]');
+  const controlsLink=document.querySelector('[data-controls-link]');
+  const controlsLinkPanel=document.querySelector('[data-controls-link-panel]');
+  const controlsButtons=Array.from(document.querySelectorAll('[data-player-action]'));
+  let controlsPlayers=[];
+  let controlsBusy=false;
+  let controlsPending=null;
+  const controlsLabels={GENERATE_LINK:'Generate New Link',ROTATE_LINK:'Rotate Link',REVOKE_LINKS:'Revoke All Links',ACTIVATE_PLAYER:'Activate Player',DEACTIVATE_PLAYER:'Deactivate Player'};
+  const controlsEffects={
+    GENERATE_LINK:'Creates an additional link. Existing links remain valid.',
+    ROTATE_LINK:'Invalidates all previous links and creates one replacement. Copy the replacement before closing.',
+    REVOKE_LINKS:'Invalidates all stored links. The player’s active status and saved picks are preserved.',
+    ACTIVATE_PLAYER:'Enables participation. Any stored links work again; no new link is created.',
+    DEACTIVATE_PLAYER:'Disables participation. Stored links and saved picks are preserved.'
+  };
+  function clearControlsLink(){if(controlsLink)controlsLink.value='';if(controlsLinkPanel)controlsLinkPanel.hidden=true;}
+  function selectedControlsPlayer(){return controlsPlayers.find(p=>p.player_id===controlsPlayer?.value);}
+  function updateControlsState(){
+    const p=selectedControlsPlayer();
+    const state=document.querySelector('[data-controls-state]');
+    if(state)state.textContent=p?`${p.active?'Active':'Inactive'} · ${Number(p.active_link_count||0)} stored link(s)`:'';
+    if(controlsPlayer)controlsPlayer.disabled=controlsBusy;
+    controlsButtons.forEach(button=>{
+      const action=button.dataset.playerAction;
+      button.disabled=controlsBusy||!!controlsPending||!p||
+        (['GENERATE_LINK','ROTATE_LINK','DEACTIVATE_PLAYER'].includes(action)&&!p.active)||
+        (action==='ACTIVATE_PLAYER'&&p.active)||
+        (action==='REVOKE_LINKS'&&!Number(p.active_link_count));
+    });
+    document.querySelector('[data-close-player-controls]').disabled=controlsBusy;
+    document.querySelector('[data-controls-cancel]').disabled=controlsBusy;
+    controlsSubmit.disabled=controlsBusy;
+  }
+  function controlsAuthError(error){
+    if(!['COMMISSIONER_SESSION_REQUIRED','INVALID_COMMISSIONER_SESSION','COMMISSIONER_SESSION_EXPIRED'].includes(error.code))return false;
+    clearSessionToken();showLogin();if(loginMessage)loginMessage.textContent=error.message;return true;
+  }
+  async function fetchControlsPlayers(){
+    const result=await postJson({action:'getCommissionerPlayerControls',session_token:getSessionToken()});
+    if(!Array.isArray(result.players))throw new Error('Player list response is incomplete.');
+    controlsPlayers=result.players;
+    const selected=controlsPlayer.value;
+    controlsPlayer.replaceChildren(new Option('Choose player…',''));
+    controlsPlayers.forEach(p=>controlsPlayer.add(new Option(`${p.display_name} (${p.active?'Active':'Inactive'})`,p.player_id)));
+    if(controlsPlayers.some(p=>p.player_id===selected))controlsPlayer.value=selected;
+    document.querySelector('[data-player-controls-counts]').textContent=`${result.pool_player_count} pool players · ${result.active_pool_player_count} active · ${result.inactive_pool_player_count} inactive · ${result.protected_admin_count} protected admin`;
+  }
+  async function openControls(){
+    if(controlsBusy||controlsDialog.open)return;
+    clearControlsLink();controlsPending=null;controlsConfirm.hidden=true;controlsPlayer.value='';
+    controlsPlayers=[];controlsBusy=true;controlsMessage.textContent='Loading players…';updateControlsState();controlsDialog.showModal();
+    try{await fetchControlsPlayers();controlsMessage.textContent='Choose a player to manage.';}
+    catch(error){if(!controlsAuthError(error))controlsMessage.textContent=error.message;}
+    finally{controlsBusy=false;updateControlsState();}
+  }
+  function resetControls(){
+    clearControlsLink();controlsPending=null;controlsPlayers=[];
+    if(controlsConfirm)controlsConfirm.hidden=true;
+    if(controlsPlayer)controlsPlayer.replaceChildren(new Option('Choose player…',''));
+    if(controlsMessage)controlsMessage.textContent='';
+  }
+  async function submitControls(){
+    if(controlsBusy||!controlsPending)return;
+    const pending={...controlsPending};const token=getSessionToken();
+    controlsBusy=true;updateControlsState();controlsSubmit.textContent='Working…';controlsMessage.textContent='';clearControlsLink();
+    try{
+      const result=await postJson({action:'runCommissionerPlayerAction',session_token:token,player_id:pending.player_id,player_action:pending.action});
+      controlsPending=null;controlsConfirm.hidden=true;
+      if(getSessionToken()!==token||!controlsDialog.open)return;
+      controlsMessage.textContent=result.message||'Player action completed.';
+      if(result.player_link){
+        controlsLink.value=result.player_link;controlsLinkPanel.hidden=false;
+      }
+      // Keep the completed result/link visible even if subsequent refresh fails.
+      try{await fetchControlsPlayers();}catch(error){if(!controlsAuthError(error)){controlsPlayers=[];controlsMessage.textContent+=' Player list could not refresh. Close and reopen Player Controls before another action.';}}
+      if(getSessionToken()===token)await loadDashboard();
+    }catch(error){
+      controlsPending=null;controlsConfirm.hidden=true;
+      if(!controlsAuthError(error)){
+        controlsPlayers=[];
+        controlsMessage.textContent=error.message+' The request may have reached the server. Close and reopen Player Controls to check the state before retrying. A generated link cannot be retrieved again.';
+      }
+    }finally{
+      controlsBusy=false;controlsSubmit.textContent='Confirm Action';updateControlsState();
+    }
+  }
+  if(controlsDialog){
+    document.querySelector('[data-open-player-controls]').addEventListener('click',openControls);
+    document.querySelector('[data-close-player-controls]').addEventListener('click',()=>{if(!controlsBusy)controlsDialog.close();});
+    controlsDialog.addEventListener('cancel',event=>{if(controlsBusy)event.preventDefault();});
+    controlsDialog.addEventListener('close',resetControls);
+    controlsPlayer.addEventListener('change',()=>{clearControlsLink();controlsPending=null;controlsConfirm.hidden=true;controlsMessage.textContent='';updateControlsState();});
+    controlsButtons.forEach(button=>button.addEventListener('click',()=>{
+      const p=selectedControlsPlayer();if(!p||controlsBusy)return;
+      controlsPending={player_id:p.player_id,action:button.dataset.playerAction};
+      document.querySelector('[data-controls-preview]').textContent=`${controlsLabels[controlsPending.action]} for ${p.display_name} (${p.player_id}). ${controlsEffects[controlsPending.action]}`;
+      controlsConfirm.hidden=false;updateControlsState();controlsSubmit.focus();
+    }));
+    document.querySelector('[data-controls-cancel]').addEventListener('click',()=>{controlsPending=null;controlsConfirm.hidden=true;updateControlsState();});
+    controlsSubmit.addEventListener('click',submitControls);
+    document.querySelector('[data-controls-copy]').addEventListener('click',async()=>{
+      if(!controlsLink.value)return;
+      try{await navigator.clipboard.writeText(controlsLink.value);controlsMessage.textContent='Link copied.';}
+      catch(error){controlsLink.focus();controlsLink.select();controlsMessage.textContent='Copy the selected link manually.';}
+    });
   }
 
   if(getSessionToken())loadDashboard();else showLogin();

@@ -163,9 +163,7 @@ Open Pick Override
 <h3>Player Controls</h3>
 <p>Generate or rotate player links, revoke access, and activate or deactivate players.</p>
 </div>
-<button class="commissioner-secondary-button" disabled="" type="button">
-Coming Next
-</button>
+<button class="button commissioner-control-open" data-open-player-controls type="button">Open Player Controls</button>
 </section>
 
 <section class="commissioner-control-launcher">
@@ -180,6 +178,35 @@ Coming Later
 </section>
 </div>
 </section>
+
+
+<dialog class="commissioner-action-dialog" data-player-controls-dialog aria-labelledby="player-controls-title">
+<section class="commissioner-action-dialog-card">
+<div class="commissioner-action-dialog-heading"><div>
+<p class="eyebrow">Player management</p><h2 class="display" id="player-controls-title">Player Controls</h2>
+<p class="commissioner-action-help">Manage pool players and access links. Administrator records are protected.</p>
+</div><button class="commissioner-dialog-close" data-close-player-controls type="button" aria-label="Close Player Controls">×</button></div>
+<p class="commissioner-muted" data-player-controls-counts></p>
+<label class="commissioner-field"><span>Player</span><select class="commissioner-select" data-controls-player disabled><option value="">Choose player…</option></select></label>
+<p class="commissioner-player-state" data-controls-state></p>
+<div class="commissioner-player-actions" data-controls-actions>
+<button class="commissioner-secondary-button" type="button" data-player-action="GENERATE_LINK" disabled>Generate New Link</button>
+<button class="commissioner-secondary-button" type="button" data-player-action="ROTATE_LINK" disabled>Rotate Link</button>
+<button class="commissioner-secondary-button" type="button" data-player-action="REVOKE_LINKS" disabled>Revoke All Links</button>
+<button class="commissioner-secondary-button" type="button" data-player-action="ACTIVATE_PLAYER" disabled>Activate Player</button>
+<button class="commissioner-secondary-button" type="button" data-player-action="DEACTIVATE_PLAYER" disabled>Deactivate Player</button>
+</div>
+<section class="commissioner-player-confirm" data-controls-confirm hidden>
+<h3>Confirm Player Action</h3><p data-controls-preview></p>
+<div class="commissioner-confirm-actions"><button class="commissioner-secondary-button" data-controls-cancel type="button">Cancel</button><button class="button" data-controls-submit type="button">Confirm Action</button></div>
+</section>
+<p class="commissioner-action-message" data-controls-message role="status" aria-live="polite"></p>
+<section class="commissioner-action-success" data-controls-link-panel hidden>
+<label class="commissioner-field"><span>New player link — copy before closing</span><input class="commissioner-input" data-controls-link readonly type="text" autocomplete="off"></label>
+<button class="commissioner-copy-button" data-controls-copy type="button">Copy Link</button>
+<p>This link is shown once. Closing this dialog clears it.</p>
+</section>
+</section></dialog>
 
 <dialog class="commissioner-action-dialog" data-pick-override-dialog="">
 <section class="commissioner-action-dialog-card">
