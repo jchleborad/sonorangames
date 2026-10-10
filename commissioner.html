@@ -166,19 +166,32 @@ Open Pick Override
 <button class="button commissioner-control-open" data-open-player-controls type="button">Open Player Controls</button>
 </section>
 
-<section class="commissioner-control-launcher">
+<section class="commissioner-control-launcher commissioner-control-launcher-active">
 <div>
 <p class="eyebrow">Recovery</p>
 <h3>Recovery Tools</h3>
 <p>Sync scores, preview rollover readiness, and retry recovery actions when needed.</p>
 </div>
-<button class="commissioner-secondary-button" disabled="" type="button">
-Coming Later
-</button>
+<button class="button commissioner-control-open" data-open-recovery type="button">Open Recovery Tools</button>
 </section>
 </div>
 </section>
 
+
+<dialog class="commissioner-action-dialog" data-recovery-dialog aria-labelledby="recovery-title">
+<div class="commissioner-action-dialog-card">
+<div class="commissioner-action-dialog-heading"><div><p class="eyebrow">System recovery</p><h2 class="display" id="recovery-title">Recovery Tools</h2><p class="commissioner-action-help">Check week readiness or rerun a job when automation needs help.</p></div><button class="commissioner-dialog-close" data-recovery-close type="button" aria-label="Close Recovery Tools">×</button></div>
+<p class="commissioner-player-state" data-recovery-summary>Loading readiness…</p>
+<ul data-recovery-blockers></ul>
+<p class="commissioner-action-help" data-recovery-checked></p>
+<div class="commissioner-player-actions">
+<button class="commissioner-secondary-button" data-recovery-preview type="button">Preview Rollover Readiness</button>
+<button class="commissioner-secondary-button" data-recovery-action="SYNC_CURRENT_WEEK" type="button" disabled>Sync Current Week</button>
+<button class="commissioner-secondary-button" data-recovery-action="RETRY_WEEKLY_ROLLOVER" type="button" disabled>Retry Weekly Rollover</button>
+</div>
+<div class="commissioner-player-confirm" data-recovery-confirm hidden><h3>Confirm Recovery Action</h3><p data-recovery-effects></p><div class="commissioner-confirm-actions"><button class="commissioner-secondary-button" data-recovery-cancel type="button">Cancel</button><button class="button" data-recovery-submit type="button">Confirm Action</button></div></div>
+<p class="commissioner-action-message" data-recovery-message role="status" aria-live="polite"></p>
+</div></dialog>
 
 <dialog class="commissioner-action-dialog" data-player-controls-dialog aria-labelledby="player-controls-title">
 <section class="commissioner-action-dialog-card">

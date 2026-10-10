@@ -58,7 +58,7 @@
     return result;
   }
 
-  function showLogin(){if(controlsDialog?.open)controlsDialog.close();resetControls();loginView.hidden=false;dashboardView.hidden=true;errorView.hidden=true;setTimeout(()=>passwordInput&&passwordInput.focus(),50);}
+  function showLogin(){if(recoveryDialog?.open)recoveryDialog.close();if(controlsDialog?.open)controlsDialog.close();resetControls();loginView.hidden=false;dashboardView.hidden=true;errorView.hidden=true;setTimeout(()=>passwordInput&&passwordInput.focus(),50);}
   function showDashboard(){loginView.hidden=true;dashboardView.hidden=false;errorView.hidden=true;}
   function showFatal(message){loginView.hidden=true;dashboardView.hidden=true;errorView.hidden=false;const n=document.querySelector('[data-fatal-message]');if(n)n.textContent=message;}
 
@@ -829,6 +829,75 @@
       catch(error){controlsLink.focus();controlsLink.select();setControlsMessage('Copy the selected link manually.');}
     });
   }
+
+  const recoveryDialog=document.querySelector('[data-recovery-dialog]');
+  const recoveryMessage=document.querySelector('[data-recovery-message]');
+  const recoveryConfirm=document.querySelector('[data-recovery-confirm]');
+  let recoveryStatus=null,recoveryBusy=false,recoveryPending=null;
+  function recoveryNotice(text,state='neutral'){recoveryMessage.textContent=text;recoveryMessage.dataset.state=state;}
+  function recoveryState(){
+    recoveryDialog.querySelectorAll('button').forEach(button=>button.disabled=recoveryBusy);
+    recoveryDialog.querySelectorAll('[data-recovery-action]').forEach(button=>{
+      button.disabled=recoveryBusy||!!recoveryPending||!recoveryStatus||
+        (button.dataset.recoveryAction==='RETRY_WEEKLY_ROLLOVER'&&!recoveryStatus.ready_to_roll);
+    });
+    recoveryDialog.querySelector('[data-recovery-preview]').disabled=recoveryBusy||!!recoveryPending;
+  }
+  async function recoveryPreview(){
+    const token=getSessionToken();
+    const status=await postJson({action:'runCommissionerAction',action_type:'PREVIEW_ROLLOVER',session_token:token});
+    if(token!==getSessionToken()||!recoveryDialog.open)return;
+    if(!Array.isArray(status.blockers)||!Number.isInteger(status.current_week)||!Number.isInteger(status.season))throw new Error('Readiness response is incomplete.');
+    recoveryStatus=status;
+    document.querySelector('[data-recovery-summary]').textContent=`${status.season} · Week ${status.current_week} · ${status.current_week_final_games}/${status.current_week_game_count} games final · ${status.ready_to_roll?'Ready to advance':'Rollover blocked'}`;
+    const list=document.querySelector('[data-recovery-blockers]');list.replaceChildren();
+    status.blockers.forEach(blocker=>{const li=document.createElement('li');li.textContent=blocker;list.append(li);});
+    document.querySelector('[data-recovery-checked]').textContent=`Checked ${new Date(status.checked_at).toLocaleString()}. Preview does not change data.`;
+  }
+  async function refreshRecovery(){
+    if(recoveryBusy)return;
+    recoveryBusy=true;recoveryStatus=null;recoveryNotice('Checking readiness…');recoveryState();
+    try{await recoveryPreview();if(recoveryDialog.open)recoveryNotice('Readiness refreshed.');}
+    catch(error){if(!controlsAuthError(error))recoveryNotice(error.message,'error');}
+    finally{recoveryBusy=false;recoveryState();}
+  }
+  document.querySelector('[data-open-recovery]').addEventListener('click',()=>{
+    if(recoveryBusy||recoveryDialog.open)return;
+    recoveryStatus=null;recoveryPending=null;recoveryConfirm.hidden=true;
+    document.querySelector('[data-recovery-summary]').textContent='Loading readiness…';
+    document.querySelector('[data-recovery-blockers]').replaceChildren();document.querySelector('[data-recovery-checked]').textContent='';
+    recoveryDialog.showModal();refreshRecovery();
+  });
+  document.querySelector('[data-recovery-close]').addEventListener('click',()=>{if(!recoveryBusy)recoveryDialog.close();});
+  recoveryDialog.addEventListener('cancel',event=>{if(recoveryBusy)event.preventDefault();});
+  recoveryDialog.addEventListener('close',()=>{recoveryStatus=null;recoveryPending=null;recoveryConfirm.hidden=true;recoveryNotice('');});
+  document.querySelector('[data-recovery-preview]').addEventListener('click',refreshRecovery);
+  recoveryDialog.querySelectorAll('[data-recovery-action]').forEach(button=>button.addEventListener('click',()=>{
+    if(recoveryBusy||!recoveryStatus||recoveryPending)return;
+    const action=button.dataset.recoveryAction;
+    if(action==='RETRY_WEEKLY_ROLLOVER'&&!recoveryStatus.ready_to_roll)return;
+    recoveryPending={action,season:recoveryStatus.season,week:recoveryStatus.current_week};
+    document.querySelector('[data-recovery-effects]').textContent=action==='SYNC_CURRENT_WEEK'?
+      `Refresh ${recoveryPending.season} Week ${recoveryPending.week} schedule and scores from ESPN. This action does not grade picks, advance the week, or change triggers.`:
+      `Grade ${recoveryPending.season} Week ${recoveryPending.week}, update standings, sync Week ${recoveryPending.week+1}, and advance the configured week. Server checks must still pass.`;
+    recoveryConfirm.hidden=false;recoveryNotice('');recoveryState();document.querySelector('[data-recovery-submit]').focus();
+  }));
+  document.querySelector('[data-recovery-cancel]').addEventListener('click',()=>{recoveryPending=null;recoveryConfirm.hidden=true;recoveryState();});
+  document.querySelector('[data-recovery-submit]').addEventListener('click',async()=>{
+    if(recoveryBusy||!recoveryPending)return;
+    const pending={...recoveryPending},token=getSessionToken();recoveryBusy=true;recoveryState();recoveryNotice('Working…');
+    try{
+      const result=await postJson({action:'runCommissionerAction',action_type:pending.action,session_token:token,expected_season:pending.season,expected_week:pending.week,confirmed:true});
+      recoveryPending=null;recoveryConfirm.hidden=true;recoveryStatus=null;
+      if(token!==getSessionToken()||!recoveryDialog.open)return;
+      recoveryNotice(result.message||'Recovery action completed.','success');
+      try{await recoveryPreview();}catch(error){if(!controlsAuthError(error))recoveryNotice((result.message||'Action completed.')+' Close and reopen Recovery Tools to refresh readiness.','error');}
+      if(token===getSessionToken())await loadDashboard();
+    }catch(error){
+      recoveryPending=null;recoveryConfirm.hidden=true;recoveryStatus=null;
+      if(!controlsAuthError(error))recoveryNotice(error.message+' The operation may have partially completed. Refresh readiness and the dashboard before deciding whether to retry.','error');
+    }finally{recoveryBusy=false;recoveryState();}
+  });
 
   if(getSessionToken())loadDashboard();else showLogin();
 })();

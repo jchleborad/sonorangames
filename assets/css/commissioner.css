@@ -443,3 +443,11 @@
   border-color:#355535;
   background:#f0f5ee
 }
+
+[data-recovery-confirm][hidden]{display:none}
+[data-recovery-dialog] button:disabled{background:#e7e9e7;border-color:#c9cec9;color:#626962;cursor:not-allowed}
+[data-recovery-message][data-state="neutral"]{color:var(--ink)}
+[data-recovery-message][data-state="success"]{color:#16803a}
+[data-recovery-message][data-state="error"]{color:var(--danger)}
+[data-recovery-blockers]{padding-left:22px;margin-bottom:16px}
+[data-recovery-blockers] li{margin-bottom:6px}
