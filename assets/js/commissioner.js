@@ -734,6 +734,10 @@
     ACTIVATE_PLAYER:'Enables participation. Any stored links work again; no new link is created.',
     DEACTIVATE_PLAYER:'Disables participation. Stored links and saved picks are preserved.'
   };
+  function setControlsMessage(message,state='neutral'){
+    if(!controlsMessage)return;
+    controlsMessage.textContent=message;controlsMessage.dataset.state=state;
+  }
   function clearControlsLink(){if(controlsLink)controlsLink.value='';if(controlsLinkPanel)controlsLinkPanel.hidden=true;}
   function selectedControlsPlayer(){return controlsPlayers.find(p=>p.player_id===controlsPlayer?.value);}
   function updateControlsState(){
@@ -769,37 +773,37 @@
   async function openControls(){
     if(controlsBusy||controlsDialog.open)return;
     clearControlsLink();controlsPending=null;controlsConfirm.hidden=true;controlsPlayer.value='';
-    controlsPlayers=[];controlsBusy=true;controlsMessage.textContent='Loading players…';updateControlsState();controlsDialog.showModal();
-    try{await fetchControlsPlayers();controlsMessage.textContent='Choose a player to manage.';}
-    catch(error){if(!controlsAuthError(error))controlsMessage.textContent=error.message;}
+    controlsPlayers=[];controlsBusy=true;setControlsMessage('Loading players…');updateControlsState();controlsDialog.showModal();
+    try{await fetchControlsPlayers();setControlsMessage('Choose a player to manage.');}
+    catch(error){if(!controlsAuthError(error))setControlsMessage(error.message,'error');}
     finally{controlsBusy=false;updateControlsState();}
   }
   function resetControls(){
     clearControlsLink();controlsPending=null;controlsPlayers=[];
     if(controlsConfirm)controlsConfirm.hidden=true;
     if(controlsPlayer)controlsPlayer.replaceChildren(new Option('Choose player…',''));
-    if(controlsMessage)controlsMessage.textContent='';
+    setControlsMessage('');
   }
   async function submitControls(){
     if(controlsBusy||!controlsPending)return;
     const pending={...controlsPending};const token=getSessionToken();
-    controlsBusy=true;updateControlsState();controlsSubmit.textContent='Working…';controlsMessage.textContent='';clearControlsLink();
+    controlsBusy=true;updateControlsState();controlsSubmit.textContent='Working…';setControlsMessage('');clearControlsLink();
     try{
       const result=await postJson({action:'runCommissionerPlayerAction',session_token:token,player_id:pending.player_id,player_action:pending.action});
       controlsPending=null;controlsConfirm.hidden=true;
       if(getSessionToken()!==token||!controlsDialog.open)return;
-      controlsMessage.textContent=result.message||'Player action completed.';
+      setControlsMessage(result.message||'Player action completed.','success');
       if(result.player_link){
         controlsLink.value=result.player_link;controlsLinkPanel.hidden=false;
       }
       // Keep the completed result/link visible even if subsequent refresh fails.
-      try{await fetchControlsPlayers();}catch(error){if(!controlsAuthError(error)){controlsPlayers=[];controlsMessage.textContent+=' Player list could not refresh. Close and reopen Player Controls before another action.';}}
+      try{await fetchControlsPlayers();}catch(error){if(!controlsAuthError(error)){controlsPlayers=[];setControlsMessage(controlsMessage.textContent+' Player list could not refresh. Close and reopen Player Controls before another action.','error');}}
       if(getSessionToken()===token)await loadDashboard();
     }catch(error){
       controlsPending=null;controlsConfirm.hidden=true;
       if(!controlsAuthError(error)){
         controlsPlayers=[];
-        controlsMessage.textContent=error.message+' The request may have reached the server. Close and reopen Player Controls to check the state before retrying. A generated link cannot be retrieved again.';
+        setControlsMessage(error.message+' The request may have reached the server. Close and reopen Player Controls to check the state before retrying. A generated link cannot be retrieved again.','error');
       }
     }finally{
       controlsBusy=false;controlsSubmit.textContent='Confirm Action';updateControlsState();
@@ -810,7 +814,7 @@
     document.querySelector('[data-close-player-controls]').addEventListener('click',()=>{if(!controlsBusy)controlsDialog.close();});
     controlsDialog.addEventListener('cancel',event=>{if(controlsBusy)event.preventDefault();});
     controlsDialog.addEventListener('close',resetControls);
-    controlsPlayer.addEventListener('change',()=>{clearControlsLink();controlsPending=null;controlsConfirm.hidden=true;controlsMessage.textContent='';updateControlsState();});
+    controlsPlayer.addEventListener('change',()=>{clearControlsLink();controlsPending=null;controlsConfirm.hidden=true;setControlsMessage('');updateControlsState();});
     controlsButtons.forEach(button=>button.addEventListener('click',()=>{
       const p=selectedControlsPlayer();if(!p||controlsBusy)return;
       controlsPending={player_id:p.player_id,action:button.dataset.playerAction};
@@ -821,8 +825,8 @@
     controlsSubmit.addEventListener('click',submitControls);
     document.querySelector('[data-controls-copy]').addEventListener('click',async()=>{
       if(!controlsLink.value)return;
-      try{await navigator.clipboard.writeText(controlsLink.value);controlsMessage.textContent='Link copied.';}
-      catch(error){controlsLink.focus();controlsLink.select();controlsMessage.textContent='Copy the selected link manually.';}
+      try{await navigator.clipboard.writeText(controlsLink.value);setControlsMessage('Link copied.','success');}
+      catch(error){controlsLink.focus();controlsLink.select();setControlsMessage('Copy the selected link manually.');}
     });
   }
 

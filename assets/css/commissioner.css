@@ -421,3 +421,16 @@
 .commissioner-player-confirm[hidden], [data-controls-link-panel][hidden]{display:none}
 [data-controls-link]{width:100%;min-width:0;font-size:.9rem}
 @media(max-width:480px){.commissioner-player-actions{grid-template-columns:1fr}}
+
+[data-player-controls-dialog] button:disabled,
+[data-player-controls-dialog] button:disabled:hover{
+  background:#e7e9e7;
+  border-color:#c9cec9;
+  color:#626962;
+  box-shadow:none;
+  transform:none;
+  cursor:not-allowed
+}
+[data-controls-message][data-state="neutral"]{color:var(--ink)}
+[data-controls-message][data-state="success"]{color:#355535}
+[data-controls-message][data-state="error"]{color:var(--danger)}
