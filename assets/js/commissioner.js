@@ -15,6 +15,9 @@
   const logoutButton = document.querySelector('[data-logout]');
   const returnLoginButton = document.querySelector('[data-return-login]');
 
+  const openPickOverrideButton = document.querySelector('[data-open-pick-override]');
+  const pickOverrideDialog = document.querySelector('[data-pick-override-dialog]');
+  const closePickOverrideButton = document.querySelector('[data-close-pick-override]');
   const overrideForm = document.querySelector('[data-override-form]');
   const overridePlayer = document.querySelector('[data-override-player]');
   const overrideGame = document.querySelector('[data-override-game]');
@@ -166,12 +169,89 @@
   }
 
   function renderSchedule(p){
-    const x=p.schedule||{},sum=document.querySelector('[data-schedule-summary]'),bt=document.querySelector('[data-byes]'),t=document.querySelector('[data-schedule]');
-    if(sum)sum.textContent=`${Number(x.game_count||0)} games · ${Number(x.bye_count||0)} BYE teams`;
-    const byes=x.bye_teams||[]; if(bt)bt.innerHTML=byes.length?`<p class="eyebrow">BYE teams</p>${byes.map(v=>`<span class="commissioner-bye-chip">${escapeHtml(v)}</span>`).join('')}`:'<p class="commissioner-muted">No teams on BYE this week.</p>';
-    if(!t)return; const games=x.games||[]; if(!games.length){t.innerHTML='<div class="commissioner-empty">No current-week games were found.</div>';return;}
-    const groups=new Map();games.forEach(g=>{const d=g.game_day_arizona||'Schedule';if(!groups.has(d))groups.set(d,[]);groups.get(d).push(g);});
-    t.innerHTML=Array.from(groups.entries()).map(([day,rows])=>`<section class="commissioner-day-group"><h3>${escapeHtml(day)}</h3>${rows.map(g=>`<div class="commissioner-game-row"><div class="commissioner-game-time">${escapeHtml(formatAZ(g.kickoff_utc))}</div><div class="commissioner-game-matchup"><strong>${escapeHtml(g.away_abbr)} @ ${escapeHtml(g.home_abbr)}</strong>${g.unusual_kickoff?`<div class="commissioner-unusual">⚠ ${escapeHtml(g.unusual_reason)}</div>`:''}</div><div class="commissioner-game-id"><span>Game ID ${escapeHtml(g.game_id)}</span></div></div>`).join('')}</section>`).join('');
+    const x=p.schedule||{};
+    const sum=document.querySelector('[data-schedule-summary]');
+    const bt=document.querySelector('[data-byes]');
+    const t=document.querySelector('[data-schedule]');
+
+    if(sum){
+      sum.textContent=`${Number(x.game_count||0)} games · ${Number(x.bye_count||0)} BYE teams`;
+    }
+
+    const byes=x.bye_teams||[];
+    if(bt){
+      bt.innerHTML=byes.length
+        ? `<p class="eyebrow">BYE teams</p>${byes.map(v=>`<span class="commissioner-bye-chip">${escapeHtml(v)}</span>`).join('')}`
+        : '<p class="commissioner-muted">No teams on BYE this week.</p>';
+    }
+
+    if(!t)return;
+
+    const games=x.games||[];
+    if(!games.length){
+      t.innerHTML='<div class="commissioner-empty">No current-week games were found.</div>';
+      return;
+    }
+
+    const gameHtml=g=>`
+      <div class="commissioner-game-row">
+        <div class="commissioner-game-time">${escapeHtml(formatAZ(g.kickoff_utc))}</div>
+        <div class="commissioner-game-matchup">
+          <strong>${escapeHtml(g.away_abbr)} @ ${escapeHtml(g.home_abbr)}</strong>
+          ${g.unusual_kickoff?`<div class="commissioner-unusual">⚠ ${escapeHtml(g.unusual_reason)}</div>`:''}
+        </div>
+        <div class="commissioner-game-id"><span>Game ID ${escapeHtml(g.game_id)}</span></div>
+      </div>`;
+
+    const groups=new Map();
+    games.forEach(g=>{
+      const d=g.game_day_arizona||'Schedule';
+      if(!groups.has(d))groups.set(d,[]);
+      groups.get(d).push(g);
+    });
+
+    t.innerHTML=Array.from(groups.entries()).map(([day,rows],index)=>{
+      const first=rows[0];
+      const remaining=rows.slice(1);
+      const groupId=`commissioner-schedule-extra-${index}`;
+
+      return `
+        <section class="commissioner-day-group">
+          <h3>${escapeHtml(day)}</h3>
+          ${gameHtml(first)}
+          ${remaining.length?`
+            <div class="commissioner-schedule-extra" id="${groupId}" hidden>
+              ${remaining.map(gameHtml).join('')}
+            </div>
+            <button
+              class="commissioner-schedule-toggle"
+              type="button"
+              data-schedule-toggle="${groupId}"
+              data-collapsed-label="Show ${remaining.length} more game${remaining.length===1?'':'s'}"
+              data-expanded-label="Hide additional games"
+              aria-expanded="false"
+              aria-controls="${groupId}"
+            >
+              Show ${remaining.length} more game${remaining.length===1?'':'s'}
+            </button>
+          `:''}
+        </section>
+      `;
+    }).join('');
+
+    t.querySelectorAll('[data-schedule-toggle]').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const target=document.getElementById(button.dataset.scheduleToggle);
+        if(!target)return;
+
+        const expanded=button.getAttribute('aria-expanded')==='true';
+        target.hidden=expanded;
+        button.setAttribute('aria-expanded',String(!expanded));
+        button.textContent=expanded
+          ? button.dataset.collapsedLabel
+          : button.dataset.expandedLabel;
+      });
+    });
   }
 
   function renderRank(selector,rows,value){
@@ -523,6 +603,7 @@
       pendingOverride=null;
 
       if(overrideDialog?.open)overrideDialog.close();
+      if(pickOverrideDialog?.open)pickOverrideDialog.close();
       if(overrideForm)overrideForm.reset();
       if(overrideGameReference)overrideGameReference.hidden=true;
       if(overridePickFieldset)overridePickFieldset.disabled=true;
@@ -581,6 +662,24 @@
   if(refreshButton)refreshButton.addEventListener('click',loadDashboard);
   if(logoutButton)logoutButton.addEventListener('click',logout);
   if(returnLoginButton)returnLoginButton.addEventListener('click',()=>{clearSessionToken();showLogin();});
+
+  if(openPickOverrideButton){
+    openPickOverrideButton.addEventListener('click',()=>{
+      if(pickOverrideDialog?.showModal)pickOverrideDialog.showModal();
+    });
+  }
+
+  if(closePickOverrideButton){
+    closePickOverrideButton.addEventListener('click',()=>{
+      if(pickOverrideDialog?.open)pickOverrideDialog.close();
+    });
+  }
+
+  if(pickOverrideDialog){
+    pickOverrideDialog.addEventListener('click',event=>{
+      if(event.target===pickOverrideDialog)pickOverrideDialog.close();
+    });
+  }
 
   if(overrideForm)overrideForm.addEventListener('submit',previewPickOverride);
   if(overridePlayer)overridePlayer.addEventListener('change',updateOverrideButtonState);

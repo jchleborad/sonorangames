@@ -144,19 +144,56 @@
 </div>
 <span class="status status-upcoming">Protected actions</span>
 </div>
-<div class="commissioner-control-layout">
-<section class="commissioner-action-panel commissioner-action-panel-active">
-<div class="commissioner-action-panel-heading">
+
+<div class="commissioner-control-launchers">
+<section class="commissioner-control-launcher commissioner-control-launcher-active">
 <div>
 <p class="eyebrow">Pick actions</p>
 <h3>Pick Override</h3>
+<p>Change a player's current-week pick when Commissioner intervention is required.</p>
 </div>
-<span class="commissioner-muted">Current week only</span>
+<button class="button commissioner-control-open" data-open-pick-override="" type="button">
+Open Pick Override
+</button>
+</section>
+
+<section class="commissioner-control-launcher">
+<div>
+<p class="eyebrow">Player management</p>
+<h3>Player Controls</h3>
+<p>Generate or rotate player links, revoke access, and activate or deactivate players.</p>
 </div>
+<button class="commissioner-secondary-button" disabled="" type="button">
+Coming Next
+</button>
+</section>
+
+<section class="commissioner-control-launcher">
+<div>
+<p class="eyebrow">Recovery</p>
+<h3>Recovery Tools</h3>
+<p>Sync scores, preview rollover readiness, and retry recovery actions when needed.</p>
+</div>
+<button class="commissioner-secondary-button" disabled="" type="button">
+Coming Later
+</button>
+</section>
+</div>
+</section>
+
+<dialog class="commissioner-action-dialog" data-pick-override-dialog="">
+<section class="commissioner-action-dialog-card">
+<div class="commissioner-action-dialog-heading">
+<div>
+<p class="eyebrow">Pick actions</p>
+<h2 class="display">Pick Override</h2>
 <p class="commissioner-action-help">
-                Select the player, game, and team. Player IDs, Game IDs, and team abbreviations
-                are filled from the live Week data — no manual IDs required.
-              </p>
+Change a player's current-week pick. Player IDs, Game IDs, and team abbreviations are filled from the live Week data — no manual IDs required.
+</p>
+</div>
+<button aria-label="Close Pick Override" class="commissioner-dialog-close" data-close-pick-override="" type="button">×</button>
+</div>
+
 <form class="commissioner-override-form" data-override-form="">
 <div class="commissioner-form-grid">
 <label class="commissioner-field">
@@ -172,50 +209,43 @@
 </select>
 </label>
 </div>
+
 <div class="commissioner-game-reference" data-override-game-reference="" hidden="">
 <div>
 <span class="commissioner-field-label">Game ID</span>
 <strong data-override-game-id="">—</strong>
 </div>
-<button class="commissioner-copy-button" data-copy-override-game-id="" type="button">
-                    Copy
-                  </button>
+<button class="commissioner-copy-button" data-copy-override-game-id="" type="button">Copy</button>
 </div>
+
 <fieldset class="commissioner-pick-fieldset" data-override-pick-fieldset="" disabled="">
 <legend>Pick</legend>
 <div class="commissioner-pick-options" data-override-pick-options="">
 <span class="commissioner-muted">Choose a game first.</span>
 </div>
 </fieldset>
+
 <label class="commissioner-field">
 <span>Reason</span>
 <textarea class="commissioner-textarea" data-override-reason="" placeholder="Why is this Commissioner override needed?" required="" rows="3"></textarea>
 </label>
+
 <div class="commissioner-requested-by">
 <span>Requested by</span>
 <strong>JohnC</strong>
 </div>
+
 <p aria-live="polite" class="commissioner-action-message" data-override-message=""></p>
+
 <button class="button commissioner-preview-button" data-preview-override="" disabled="" type="submit">
-                  Preview Override
-                </button>
+Preview Override
+</button>
 </form>
+
 <div class="commissioner-action-success" data-override-success="" hidden=""></div>
 </section>
-<div class="commissioner-control-side">
-<section class="commissioner-control-group">
-<strong>Player Controls</strong>
-<span>Generate / Rotate · Revoke · Activate / Deactivate</span>
-<small>Coming next</small>
-</section>
-<section class="commissioner-control-group">
-<strong>Recovery Tools</strong>
-<span>Sync Scores · Preview Rollover · Retry Rollover</span>
-<small>Coming after Player Controls</small>
-</section>
-</div>
-</div>
-</section><dialog class="commissioner-confirm-dialog" data-override-dialog="">
+</dialog>
+<dialog class="commissioner-confirm-dialog" data-override-dialog="">
 <form class="commissioner-confirm-card" method="dialog">
 <p class="eyebrow">Confirm Commissioner Action</p>
 <h2 class="display">Pick Override</h2>
