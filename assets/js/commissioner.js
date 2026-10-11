@@ -66,6 +66,16 @@
   function formatAZ(value){const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('en-US',{timeZone:'America/Phoenix',hour:'numeric',minute:'2-digit'}).format(d);}
   const score=value=>Number(value||0).toFixed(2);
 
+  function commissionerGameStatus(game){
+    const phase=String(game.phase||'').toUpperCase();
+    return {LIVE:['Live','live'],UPCOMING:['Upcoming','upcoming'],FINAL:['Final','final']}[phase]||['Status unavailable','unknown'];
+  }
+  function commissionerKickoffWarning(game,serverTime){
+    return game.unusual_kickoff===true && String(game.phase||'').toUpperCase()==='UPCOMING' &&
+      Number.isFinite(Date.parse(game.kickoff_utc)) && Number.isFinite(Date.parse(serverTime)) &&
+      Date.parse(game.kickoff_utc)>Date.parse(serverTime);
+  }
+
   function renderAlerts(p){
     const gameTarget=document.querySelector('[data-game-alerts]');
     const playerTarget=document.querySelector('[data-player-alerts]');
@@ -79,7 +89,9 @@
       .filter(a=>['ZERO_PICK_PLAYERS','INCOMPLETE_PLAYERS'].includes(String(a.code||'')))
       .sort((a,b)=>(playerOrder[String(a.code||'')]??99)-(playerOrder[String(b.code||'')]??99));
 
-    const gameAlerts=alerts.filter(a=>String(a.code||'')==='UNUSUAL_KICKOFF');
+    const gameAlerts=(p.schedule?.games||[])
+      .filter(game=>commissionerKickoffWarning(game,p.server_time_utc))
+      .map(game=>({level:'ATTENTION',message:`${game.away_abbr} at ${game.home_abbr}: ${game.unusual_reason} (${game.kickoff_arizona||formatLocal(game.kickoff_utc)}).`}));
 
     const byeTeams=Array.isArray(p.schedule?.bye_teams)
       ? p.schedule.bye_teams.filter(Boolean)
@@ -198,7 +210,8 @@
         <div class="commissioner-game-time">${escapeHtml(formatAZ(g.kickoff_utc))}</div>
         <div class="commissioner-game-matchup">
           <strong>${escapeHtml(g.away_abbr)} @ ${escapeHtml(g.home_abbr)}</strong>
-          ${g.unusual_kickoff?`<div class="commissioner-unusual">⚠ ${escapeHtml(g.unusual_reason)}</div>`:''}
+          <span class="commissioner-game-status is-${commissionerGameStatus(g)[1]}">${commissionerGameStatus(g)[0]}</span>
+          ${commissionerKickoffWarning(g,p.server_time_utc)?`<div class="commissioner-unusual">⚠ ${escapeHtml(g.unusual_reason)}</div>`:''}
         </div>
         <div class="commissioner-game-id"><span>Game ID ${escapeHtml(g.game_id)}</span></div>
       </div>`;

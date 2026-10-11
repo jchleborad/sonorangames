@@ -456,3 +456,10 @@
 [data-controls-add-form]{margin-top:1rem;padding-top:1rem;border-top:1px solid #c9cec9}
 
 [data-controls-actions] + .commissioner-player-actions{margin-top:10px}
+
+/* Schedule phases use the same dashboard payload as Week Status. */
+.commissioner-game-status{display:inline-block;margin:.35rem 0 .15rem;padding:.2rem .6rem;border:1px solid currentColor;border-radius:999px;font-size:.78rem;font-weight:800;line-height:1.4;white-space:nowrap}
+.commissioner-game-status.is-live{color:#a83f3f;background:#fff0ed}
+.commissioner-game-status.is-upcoming{color:#4f5968;background:#f2f4f7}
+.commissioner-game-status.is-final{color:#355535;background:#eef5ed}
+.commissioner-game-status.is-unknown{color:#626962;background:#f4f4f2}
