@@ -202,40 +202,6 @@
     }).format(date);
   }
 
-  function formatQuarter(value) {
-    const quarter = Number(value);
-
-    if (!Number.isInteger(quarter) || quarter < 1) return '';
-    if (quarter === 1) return '1st';
-    if (quarter === 2) return '2nd';
-    if (quarter === 3) return '3rd';
-    if (quarter === 4) return '4th';
-    return 'OT';
-  }
-
-  function formatLiveClock(game) {
-    const rawClock = String(game.clock || '').trim();
-
-    if (!rawClock || rawClock === '0:00') return 'Live';
-
-    const match = rawClock.match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) return 'Live';
-
-    const minutes = Number(match[1]);
-    const seconds = Number(match[2]);
-    const quarter = Number(game.quarter);
-
-    if (!Number.isInteger(minutes) || !Number.isInteger(seconds) || seconds < 0 || seconds > 59) {
-      return 'Live';
-    }
-
-    if (quarter >= 1 && quarter <= 4 && (minutes > 15 || (minutes === 15 && seconds > 0))) {
-      return 'Live';
-    }
-
-    return `${escapeHtml(rawClock)} remaining`;
-  }
-
   function formatSyncStatus(isoValue) {
     if (!isoValue) {
       return { text: 'Score sync time unavailable', stale: true };
@@ -394,15 +360,10 @@
   }
 
   function liveCardHtml(game) {
-    const quarter = formatQuarter(game.quarter);
-    const statusText = quarter ? `Live · ${quarter}` : 'Live';
-    const clockText = formatLiveClock(game);
-
     return `
       <article class="card game-card game-card-live" data-game-id="${escapeHtml(game.game_id)}">
         <div class="game-card-top">
-          <span class="status status-live">${statusText}</span>
-          <span class="game-clock">${clockText}</span>
+          <span class="status status-live">Live</span>
         </div>
         ${teamRowHtml(game, 'away', { showScore: true })}
         ${teamRowHtml(game, 'home', { showScore: true })}
@@ -431,13 +392,10 @@
   }
 
   function finalCardHtml(game) {
-    const statusText = String(game.status || '').toUpperCase().includes('OT') ? 'Final / OT' : 'Final';
-
     return `
       <article class="card game-card" data-game-id="${escapeHtml(game.game_id)}">
         <div class="game-card-top">
-          <span class="status status-final">${statusText}</span>
-          <span class="game-clock"></span>
+          <span class="status status-final">Final</span>
         </div>
         ${teamRowHtml(game, 'away', { showScore: true, winner: true })}
         ${teamRowHtml(game, 'home', { showScore: true, winner: true })}
