@@ -569,3 +569,8 @@
   .admin-integrity { grid-template-columns: 1fr; text-align: center; }
   .admin-badge { margin-inline: auto; }
 }
+
+/* Picks: team records entering the matchup, inline with natural wrapping. */
+.team-choice .team-choice-copy { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.team-choice .team-mark { flex: 0 0 40px; }
+.team-choice .team-record { display: inline; font-size: .9em; font-weight: 500; }

@@ -296,6 +296,13 @@
       '<span>Your changes will be saved as a draft on this device.</span>';
   }
 
+  function teamRecordHtml(record) {
+    if (!record || !['wins', 'losses', 'ties'].every(key =>
+      Number.isInteger(record[key]) && record[key] >= 0
+    ) || !/^(0|[WLT][1-9]\d*)$/.test(record.streak)) return '';
+    return ` <span class="team-record">(${record.wins}–${record.losses}–${record.ties} · Strk ${escapeHtml(record.streak)})</span>`;
+  }
+
   function renderTeam(game, side) {
     const abbreviation = game[`${side}_abbr`];
     const name = game[`${side}_team`];
@@ -303,7 +310,7 @@
     const locked = game.locked || !card.picks_open;
     return `<button class="team-choice${selected ? ' is-selected' : ''}" type="button" data-team="${escapeHtml(abbreviation)}" aria-pressed="${selected}"${locked ? ' disabled' : ''}>
       <span class="team-mark">${escapeHtml(abbreviation)}</span>
-      <span><strong>${escapeHtml(name)}</strong><small>${side === 'away' ? 'Away' : 'Home'}</small></span>
+      <span class="team-choice-copy"><strong>${escapeHtml(name)}${teamRecordHtml(game[`${side}_record`])}</strong><small>${side === 'away' ? 'Away' : 'Home'}</small></span>
       ${selected ? '<span class="pick-check" aria-hidden="true">✓</span>' : ''}
     </button>`;
   }
