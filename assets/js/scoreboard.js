@@ -241,6 +241,13 @@
     return [...games].sort((a, b) => Number(a.week_sort || 0) - Number(b.week_sort || 0));
   }
 
+  function scoreboardRecordHtml(record) {
+    if (!record || !['wins', 'losses', 'ties'].every(key =>
+      Number.isInteger(record[key]) && record[key] >= 0
+    )) return '';
+    return ` <span class="scoreboard-team-record">(${record.wins}–${record.losses}–${record.ties})</span>`;
+  }
+
   function teamRowHtml(game, side, options = {}) {
     const abbreviation = escapeHtml(game[`${side}_abbr`] || '');
     const teamName = escapeHtml(game[`${side}_team`] || '');
@@ -255,7 +262,7 @@
     return `
       <div class="team-row${winnerClass}">
         <span class="team-mark">${abbreviation}</span>
-        <div class="team-name"><strong>${teamName}</strong></div>
+        <div class="team-name"><strong>${teamName}${scoreboardRecordHtml(game[`${side}_record`])}</strong></div>
         ${hasScore ? `<strong class="team-score">${escapeHtml(score)}</strong>` : ''}
       </div>
     `;
