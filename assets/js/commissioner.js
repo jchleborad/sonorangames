@@ -113,7 +113,7 @@
     const byeHtml=byeTeams.length
       ? `<div class="commissioner-alert commissioner-alert-byes">
           <span class="commissioner-alert-symbol">•</span>
-          <span><strong>BYE TEAMS</strong> · ${escapeHtml(byeTeams.join(' · '))}</span>
+          <div><strong>BYE TEAMS</strong><div>${byeTeams.map(team=>`<span class="commissioner-bye-chip">${escapeHtml(team)}</span>`).join('')}</div></div>
         </div>`
       : '';
 
