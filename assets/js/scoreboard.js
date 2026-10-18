@@ -245,7 +245,7 @@
     if (!record || !['wins', 'losses', 'ties'].every(key =>
       Number.isInteger(record[key]) && record[key] >= 0
     )) return '';
-    return ` <span class="scoreboard-team-record">(${record.wins}–${record.losses}–${record.ties})</span>`;
+    return ` <span class="scoreboard-team-record">(${record.wins}–${record.losses}${record.ties > 0 ? `–${record.ties}` : ''})</span>`;
   }
 
   function teamRowHtml(game, side, options = {}) {

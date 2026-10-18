@@ -300,7 +300,7 @@
     if (!record || !['wins', 'losses', 'ties'].every(key =>
       Number.isInteger(record[key]) && record[key] >= 0
     ) || !/^(0|[WLT][1-9]\d*)$/.test(record.streak)) return '';
-    return ` <span class="team-record">(${record.wins}–${record.losses}–${record.ties} · Strk ${escapeHtml(record.streak)})</span>`;
+    return ` <span class="team-record">(${record.wins}–${record.losses}${record.ties > 0 ? `–${record.ties}` : ''} · Strk ${escapeHtml(record.streak)})</span>`;
   }
 
   function renderTeam(game, side) {
