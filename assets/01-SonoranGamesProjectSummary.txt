@@ -1,0 +1,2170 @@
+Sonoran Games — Master Project Document
+
+Document revision: 7
+Last updated: October 18, 2026 (America/Phoenix)
+
+
+CURRENT CHECKPOINT — OCTOBER 18, 2026
+Live refinements accepted; stabilization and future multi-group scalability are the priority
+
+John approved bringing the Master Project Document forward on October 18, 2026 (America/Phoenix). This checkpoint supersedes older current-state and next-action paragraphs. Earlier checkpoints and the historical project body remain intact below. Historical roadmap entries are not automatically active work.
+
+Strategic direction — approved October 18
+- The eventual goal is to make Sonoran Games available to other groups. The offering, hosting model, account structure, pricing, and rollout remain open for discussion; no specific commercial model or release date is approved.
+- Keep scalability in architectural decisions made now, while serving the existing live private pool reliably.
+- Prioritize strengthening, simplifying, and maintaining the existing application. New feature development is no longer the default priority. Cosmetic improvements may continue when useful.
+- The base application is functionally established and has passed the live checks recorded here. This does not certify the absence of all defects or establish production capacity for multiple groups.
+- Keep live-pool maintenance distinct from future platform/commercialization planning. Do not quietly introduce accounts, billing, new services, paid infrastructure, or a multi-group rollout as routine cleanup.
+
+Scalability and reliability guardrails for future work
+- Prefer shared definitions for scoring, final-state eligibility, record formatting, and season statistics so pages do not disagree. Strengthen focused regression coverage for ties, tiebreaker-game selection, weekly winners, and rollover.
+- Preserve stable player/game identifiers and explicit season/week/competition context. The presence of competition_id is useful groundwork, not proof of tenant isolation.
+- Before onboarding another group, explicitly design and verify group ownership, commissioner roles, authorization, session/token scope, and isolation of picks, results, standings, audit records, configuration, and caches. Current frontend code still contains official_2026/2026 constants, and some backend result/standings reads filter by season rather than a group identifier. The app is not yet certified for multiple independent groups.
+- Review request volume, Apps Script execution/quotas, concurrent writes, locking, and Sheets access before increasing usage. Favor batched reads and scoped shared summaries over multiplying per-week browser requests; use caching only with deliberate freshness and invalidation rules.
+- Current Home season-best logic reads earlier weekly results sequentially; Winners also loads weekly history. Both are functional for the present pool, but this request pattern is a concrete simplification/scalability candidate. No caching or new seasonal-summary API was added in this cleanup.
+- Retain clear API boundaries so storage/hosting can evolve without rebuilding the player experience. Do not replace the current stack solely because a larger future audience is possible; first define expected load, costs, and operational requirements.
+- Backups/restoration, failure visibility, and recoverability should be evaluated as part of strengthening the app. Do not mark untested recovery paths as proven.
+
+Additional live operational confirmation after the October 12 checkpoint
+- John confirmed the automatic Week 5 → Week 6 rollover succeeded: the public site and Commissioner Dashboard updated to Week 6, with useful early-week alerts and participation counts.
+- The Dashboard Alerts & Weekly Notes approach was retained: actionable kickoff/participation notes clear as conditions resolve, while BYE teams remain. No filler statistics were added.
+- This is additional evidence for the automatic rollover engine. The separate Commissioner Retry Weekly Rollover button still has not been exercised through a successful live rollover; do not conflate the two.
+
+October 17–18 — team context on Picks and Scoreboard, deployed and accepted
+- Picks displays the team record and streak inline after the team name, with natural wrapping on smaller layouts. Example: Baltimore Ravens (4–1 · Strk W3).
+- Records use stored regular-season Schedule and ScoresLive data, not player picks or ManualOverrides. No additional sports-data feed or paid service was introduced.
+- Picks retains each team's record entering that matchup, excluding the displayed game and later games. A completed Thursday matchup keeps its pregame record on Picks.
+- Streak notation is Wn/Ln/Tn; a tie resets the streak to T1, BYEs do not change it, and the opening no-games state uses 0. Zero ties are omitted from the displayed record; nonzero ties are shown (Giants 3–1–1).
+- Scoreboard shows records inline without streaks. Upcoming/Live matchups do not count their unfinished result; Final matchups include that game's final win/loss/tie. Later results do not change the record on an earlier matchup's card, including historical-week views.
+- Live comparison confirmed Seattle Picks 3–2–0 versus Scoreboard 3–3–0, and Denver Picks 3–2–0 versus Scoreboard 4–2–0 after Thursday. Unplayed matchups were unchanged. Both read-only checks reported 28 team records available / 0 unavailable and no data modifications.
+- Missing prior weeks, missing/unusable scores, duplicate game data, or unfinished prior team history suppress the affected record rather than presenting a false record. A statistics-read failure does not block Picks loading. These guards do not independently prove that every stored historical game was imported.
+- Apps Script changes are in the existing PicksBackend.gs. Added read helpers buildPicksTeamRecords_/loadPicksTeamRecords_, Scoreboard summary helper, and editor-only testPicksTeamRecordsReadOnly/testScoreboardTeamRecordsReadOnly. Existing deployment URL was retained.
+- Frontend changes are in assets/js/picks.js, assets/js/scoreboard.js, and the small Picks record/wrapping addition to assets/css/site.css.
+- John confirmed deployed record displays, Thursday pregame behavior, Scoreboard postgame behavior, and subsequent conditional-tie formatting. Screenshots reviewed show inline records, intact Picks selection/checkmark, and retained kickoff times. Do not infer an independent mobile check beyond supplied/user-confirmed evidence.
+
+Scoreboard status simplification — deployed and accepted
+- Game status labels are Upcoming, Live, and Final. The live quarter/countdown display was removed, including the Final / OT label in favor of Final.
+- Scheduled kickoff times and dates remain critical information and were retained. Scores and Who Picked Who behavior were preserved.
+- John supplied a live HOU @ JAX screenshot on October 18 confirming Live without the unreliable game clock; upcoming kickoff times remain visible.
+- Score data freshness is a separate display from the removed live game clock; its later completed-week behavior is described below.
+
+Commissioner Dashboard BYE pills — deployed and accepted
+- Alerts & Weekly Notes now displays BYE teams with the existing commissioner-bye-chip navy/sand pill styling used by Schedule, Game IDs & BYEs.
+- This was a commissioner.js markup change using existing CSS; no backend or CSS replacement was needed.
+- John confirmed the live appearance. Reviewed screenshot shows CIN, DET, MIA, MIN as pills while retaining the early HOU/JAX kickoff and incomplete-card alerts.
+- Player Controls, Recovery Tools, and Add Player remain completed/accepted as recorded in the October 10 checkpoint. No new Dashboard functionality was added during this polish.
+
+October 18 evening — Home and Scoreboard cleanup, deployed and accepted
+- Root cause of Home's incorrect Best Weekly Score: home.js calculated the maximum from only the latest weekly-results payload, displaying 10 instead of the season high.
+- Home now reads completed weekly history, uses the season-wide maximum correct-pick count, and identifies the player/week. On an equal high, the latest week takes display priority, matching Winners' existing ordering. Incomplete weeks are excluded; missing history leaves the record unavailable instead of incorrectly treating a latest-week value as the season record.
+- John verified Home shows 14 / Brian C / Wk 4 and 5 completed weeks. Home's latest-champion copy also includes nonzero ties. Its obsolete Week 2 fallback wording was removed.
+- Scoreboard Previous/Week/Next buttons were replaced by one labeled dropdown, Week 1 through the configured current week, with Current identified. Player Scoreboard and Refresh Scores remain.
+- Direct week URLs are supported. The script discovers the configured current week independently from a historical URL. A failed selection restores the prior displayed week and enables selection again.
+- Once every game in the selected week is Final, the sync-age text and stale styling are suppressed. This also applies to a completed current week. Unfinished weeks retain freshness warnings; actual fetch failures still show an error. Existing auto-refresh behavior remains and already stops when no Live/Upcoming games remain.
+- John verified Home's season high, the week dropdown, and no sync-age warning on completed weeks. Reviewed screenshot shows Week 2 with 16 Final games and no age text.
+- Files: index.html, scoreboard.html, assets/js/home.js, assets/js/scoreboard.js, new assets/css/scoreboard-controls.css. No backend update was needed; scoreboard-auto-refresh.js was inspected for compatibility and left unchanged.
+- Commit 9dd6a6a pushed to master; screenshot confirms synchronized clean working tree.
+
+October 18 evening — Winners cleanup, deployed and accepted
+- Week 5 winner/scoring correction was already complete: Cindy is the winner, with 64 vs. 71 actual / 7 away. Remaining 10–4 text was a presentation omission, not a need to regrade.
+- Winners' latest champion banner now includes nonzero ties; featured and past Champions Wall records include nonzero ties (Cindy 10–4–1). Zero ties stay omitted. Related narrative record clusters also include ties.
+- Closest Tiebreaker was intentionally redefined and relabeled Closest Tiebreaker Win. Carmine's exact Week 1 prediction was valid prediction accuracy, but did not decide a weekly win and no longer qualifies for this Winners record.
+- Qualification uses completed weekly results: at least two players share the highest weekly pick points (including half points for ties); stored winner IDs must match the best tiebreaker difference within that group; the tiebreaker must reduce the tied field. An outright weekly leader does not qualify merely for a close prediction. Shared winners qualify if the tiebreaker eliminated other tied leaders; a field that all stays co-winners does not.
+- Missing differences, pending games, or inconsistent winner data are excluded. The record selects the smallest qualifying difference, preferring the latest week on equal differences. No grading or stored result changes were made.
+- Before any qualifying win, the card shows a dash and No weeks decided by a tiebreaker yet.
+- Record-book commentary uses the same qualifying tiebreaker-win rule and updates from loaded results whenever Winners is opened/refreshed. It selects up to three eligible highlights; commentary is rule-based and may remain while the same achievements still qualify. It is not continuously pushed into an already-open page.
+- John verified the deployed update. Reviewed screenshot shows Closest Tiebreaker Win = 7 / Cindy C / Wk 5, with narrative explaining five players tied for first, 64 vs. 71 actual. Brian's 14 in Week 4 remains the best weekly score.
+- File: assets/js/winners.js. Commit 5f1a8ba pushed to master; screenshot confirms synchronized clean working tree.
+
+Validation and evidence limits
+- Local JavaScript syntax, ZIP integrity, calculation fixtures, and lightweight DOM/function checks passed for the changes above. Coverage included pregame/final record differences, wins/losses/ties, BYEs, season/future-game exclusion, missing/duplicate history, conditional tie formatting, Home season-high selection, tiebreaker-win qualification, shared-winner cases, empty states, direct week changes, failure rollback, and completed-week freshness.
+- Browser visual validation was unavailable in the local runtime; live screenshots and John's deployed checks supplied the visual acceptance recorded above. Do not convert fixture tests into claims of a complete independent live-data audit.
+- The October 12 tiebreaker repair/audit closeout remains valid; no further historical data repair was needed for these presentation changes.
+- The known Winners tie omission is resolved and is not a pending cleanup item. No separately observed Commissioner winner-history omission was verified or repaired in this work; inspect current output if one is reported rather than treating an old suspicion as a confirmed defect.
+
+Known commits and delivery convention
+- 06f07a8: simplified Scoreboard game status display (actual commit message contains sstatus).
+- 8825732: Sunday well-check reminder image added at assets/images/media/weekly-reminders/sg-sunday-well-check.png; pushed and clean.
+- 8fcec35: Add team records and streaks to Picks; pushed and clean.
+- 9dd6a6a: Home season-best and Scoreboard navigation/freshness cleanup; pushed and clean.
+- 5f1a8ba: decisive tiebreaker-win recognition and champion tie display; pushed and clean.
+- Final commit hashes for Scoreboard team records, the conditional-tie format update, and Dashboard BYE pills were not supplied. Do not invent them.
+- Continue delivering code changes as ZIPs with repository-relative paths. Use specific git add commands, git status to review intended staged files, git commit, git push, and final git status. Routine diff checks are omitted for benign changes unless a concrete concern warrants them.
+
+Current next action
+- No new feature is queued by this approval. Continue normal live operation and address actual defects or useful cosmetic edits as they arise.
+- Favor a bounded strengthening/simplification review next: shared statistics/formatting, request-volume reduction, regression coverage, and explicit future group isolation. Define scope before undertaking a larger refactor or infrastructure change.
+- Preserve future multi-group availability as an architectural objective, not a claim that multi-group support is already implemented.
+
+END OCTOBER 18 CHECKPOINT
+
+
+HISTORICAL CHECKPOINT — OCTOBER 12, 2026
+Tiebreaker selection defect corrected; Week 5 repaired; Weeks 1–4 audit complete
+
+John approved recording this closeout on October 12, 2026. This checkpoint supersedes earlier next-action paragraphs. Previous checkpoints and historical project content are retained below.
+
+October 11 Dashboard refinements — deployed and accepted
+- Schedule matchups now display Live, Upcoming, or Final badges using the existing game.phase payload that also feeds Week Status. Unknown phases show Status unavailable; the frontend does not infer Live from the clock.
+- Early/unusual kickoff warnings are displayed only for UPCOMING games whose kickoff is later than the payload's server_time_utc. They disappear once kickoff passes or the game becomes LIVE/FINAL. BYE information is preserved.
+- Week Status already supplied accurate Live/Upcoming/Final counts and next kickoff; no duplicate count summary was added.
+- Overview heading changed from Current State to Alerts & Weekly Notes. This area remains focused on exceptions and useful weekly notes, without filler content.
+- Both changes were frontend-only. ZIPs: SonoranGames-Dashboard-GameStatus.zip (commissioner.js/css) and SonoranGames-Dashboard-OverviewTitle.zip (commissioner.html).
+- John confirmed live checks, schedule appearance, deployed heading, and clean working trees. Commit hashes were not supplied.
+
+October 12 incident and root cause
+- Week 5 initially announced Nicole C as champion at 10 correct / 4 incorrect / 1 tie / 10.5 pick points, with guess 50 versus incorrect tiebreaker actual 53 (3 away).
+- Actual intended tiebreaker: BUF @ LAR, game_id 401872994, October 12 Monday evening Arizona time (kickoff UTC 2026-10-13T00:15:00Z), Bills 37 / Rams 34 after overtime, combined total 71.
+- ScoresLive correctly stored 37–34, BUF winner, Final. The overtime score was not the defect. John reported no overrides.
+- Cindy was ahead before the last game; Bills pickers caught her. The final equal leaders were CindyC, DonD, MelJ, NicoleC, VictorF at 10.5 points. PattonR finished at 9.5.
+- Correct differences from 71: Cindy 64 → 7; Don 47 → 24; Mel 48 → 23; Nicole 50 → 21; Victor 60 → 11. Cindy is the sole weekly winner despite picking Rams; eligibility comes from equal highest weekly pick points, not choosing the tiebreaker-game winner.
+- Code.gs parseEspnGames_ assigned week_sort from ESPN event-array index. ESPN response order was not reliably chronological: BUF @ LAR had week_sort=1, while BAL @ ATL had week_sort=15.
+- Grading.gs sorted by week_sort and selected the last row, thus using BAL @ ATL's 30–23 total of 53.
+
+Permanent fix and guarded Week 5 repair
+- Delivered SonoranGames-TiebreakerGame-Fix.zip with full Code.gs and Grading.gs replacements plus instructions.
+- Code.gs now validates event kickoff dates and sorts a copied ESPN events array by kickoff chronology, then game ID, before assigning week_sort. Existing Schedule rows are not rewritten merely by installing the code; a later sync updates their ordering.
+- Grading.gs selectGradingTiebreakerGame_ independently selects the unique latest kickoff, ignoring stored week_sort. Invalid kickoff/game IDs or multiple games sharing the latest kickoff stop grading for review rather than silently choosing a matchup.
+- Preview payload now identifies the selected tiebreaker game, matchup, kickoff, and actual total.
+- Local regression tests reproduced Nicole/53 then selected Cindy/71, preserving pick totals and tie credit. They covered shuffled import order, reversed schedule input, invalid/ambiguous dates, guarded repair order, repeated repair, audit invocation, and lock release.
+- testTiebreakerGameSelection and live-data previewWeek5TiebreakerCorrection passed. Live preview: 24 players, 15 final games, 1 tied game; all stored pick totals and guesses unchanged; sole winner CindyC, difference 7.
+- repairWeek5TiebreakerCorrection ran successfully: updated Week 5 WeeklyResults and recalculated 2026 SeasonStandings; no normalized pick writes, ESPN fetch, other-week repair, or Config advancement. Repair records REPAIR_WEEK5_TIEBREAKER.
+- Repair log shows Nicole's erroneous Week 5 win removed and season standings recalculated. Corrected public Weekly Results PDF confirms Cindy C wins Week 5, 64 versus 71 actual, 7 away, with unchanged 10–4–1 / 10.5 points.
+- Existing Apps Script deployment update was instructed; corrected public results were verified afterward. No new endpoint URL or website-file change was required. A separate post-repair public Season Standings screenshot was not supplied; do not claim one was inspected.
+
+Historical tiebreaker audit and repair
+- New editor-only TiebreakerAudit.gs supplies audit2026Weeks1Through4Tiebreakers. Uses stored historical pick totals/guesses and current stored scores/overrides, not the current active-player roster. Never regrades or writes.
+- v1 stopped on Week 1 missing pick_points. Screenshot showed legacy blank ties/pick_points, zero pending games, and sole leader ZachW at 13–3.
+- v2 permits correct-count fallback for legacy blank pick_points only after validating all week games have final, non-tied stored results. It does not fill those legacy cells.
+- Read-only historical audit confirmed all four winner IDs remained correct; Week 1 had no mismatch, Weeks 2–4 had 24 tiebreaker-detail mismatches each.
+- Approved narrow HistoricalTiebreakerRepair.gs repair2026Weeks2Through4TiebreakerDetails changed only tiebreaker_actual and tiebreaker_diff in 72 WeeklyResults rows. Rechecked game IDs, expected totals, 24-player counts, and unchanged winner sets under a script lock; verified every other WeeklyResults field, including timestamps, unchanged. No season standings recalculation was needed.
+- Repair appended REPAIR_HISTORICAL_TIEBREAKER_DETAILS and logged successful verification before an Apps Script server error at line 76, lock.releaseLock(). The error happened after verified writes; no cause for the platform error was established.
+- Independent read-only audit completed afterward with PASS and zero mismatches for all Weeks 1–4, confirming the saved repair. No further repair run was needed.
+- Final audited historical states:
+  Week 1: DEN @ KC, 401872931, total 41, ZachW; unchanged; 24 legacy rows audited via fallback.
+  Week 2: NYG @ LAR, 401872947, total 34, EllyseZ; previous stored total 63 corrected.
+  Week 3: PHI @ CHI, 401872963, total 34, MelJ; previous stored total 56 corrected.
+  Week 4: ATL @ NO, 401872979, total 69, BrianC; previous stored total 58 corrected.
+- Editor-only audit/repair files required no additional web deployment.
+- Audit scope is tiebreaker selection/details and weekly-winner consistency against stored pick totals. It does not independently certify all historical picks, external NFL scores, or the originally displayed player-facing tiebreaker matchup.
+
+Closeout and next action
+- The identified tiebreaker errors are corrected and verified. No further data repair is needed for this incident.
+- Do not interpret this closeout as certification that every possible site error has been eliminated.
+- Retain the earlier distinction that the Commissioner Retry Weekly Rollover button has not completed a live rollover, although the automatic Week 4 → Week 5 engine was previously verified.
+- No new feature or scheduled monitoring task was authorized by this documentation update.
+
+END OCTOBER 12 CHECKPOINT
+
+
+HISTORICAL CHECKPOINT — OCTOBER 10, 2026
+Commissioner Dashboard — Recovery Tools and Add Player functional acceptance
+
+John approved recording these results on October 10, 2026. This checkpoint supersedes the October 9 next-action paragraph. The October 9 Player Controls checkpoint and older project history remain below for reference. Older roadmap statements are historical, not a new backlog or proof that unrelated features remain unfinished.
+
+Recovery Tools — delivered and live checks accepted
+- CommissionerRecoveryTools.gs supplies the protected Recovery Tools handlers. CommissionerWebActions.gs dispatches PREVIEW_ROLLOVER, SYNC_CURRENT_WEEK, and RETRY_WEEKLY_ROLLOVER through the existing runCommissionerAction POST route.
+- Preview Rollover Readiness is read-only. It shows season/week, final-game counts, blockers, readiness, and the checked time.
+- Sync Current Week refreshes Schedule/ScoresLive from ESPN for the confirmed season/week. This manual action does not itself grade, advance the week, or recreate automation triggers.
+- Retry Weekly Rollover invokes the existing rollover engine after confirmation. The engine rechecks readiness under its script lock and verifies the expected season/week before work. It grades the completed week, updates standings, imports and validates the next schedule, and changes Config last.
+- Missing-session protection, editor read-only verification, live preview, manual sync, confirmation/cancel, and Commissioner audit logging passed.
+- Live manual sync returned 15 Week 5 games. The settled display showed 1 of 15 games final, 14 unfinished, Preview and Sync enabled, and Retry Weekly Rollover disabled.
+- John confirmed Cancel ran no action and the COMMISSIONER_CURRENT_WEEK_SYNCED audit entry recorded Week 5 / 15 games.
+- The automatic live Week 4 → Week 5 rollover had already succeeded and was reviewed and confirmed by John. Do not describe the rollover engine as never live-tested.
+- Remaining validation distinction: the new Commissioner Retry Weekly Rollover button has not been exercised through a successful live rollover. The live week was not advanced for testing. An additional isolated rollover-gateway test was proposed but was not completed in this work; do not claim it passed.
+- Website changes were committed and pushed as 9886c75 — Add Commissioner Recovery Tools. Final git status was synchronized and clean.
+
+Player Controls visual completion
+- The Player Controls card was changed to the completed/active appearance to match Pick Override. John applied, verified, and approved it.
+
+Add Player — delivered and live functional tests passed
+- Added Add Player inside Player Controls using the existing runCommissionerPlayerAction route with player_action=ADD_PLAYER. Implementation and testCommissionerAddPlayerBackend are in CommissionerPlayerControls.gs.
+- Current verified Players headers: player_id, display_name, email, active, admin, created_date, notes. The actual sheet has no tiebreaker_enabled column; the older schema below is historical.
+- Commissioner enters a display name and optional email, reviews the confirmation, then confirms creation. Cancel does not create a record.
+- Backend assigns a permanent ID consisting of P plus a UUID without hyphens. Existing player IDs remain unchanged.
+- Every new record starts active=false and admin=false, with a creation date and Commissioner note. No access link is generated. Activation and link generation remain separate existing controls.
+- A valid Commissioner session and explicit confirmed=true are required. Inputs are validated, including spreadsheet-formula prefixes. Normalized matching display names or nonempty emails are rejected for review. Different people sharing a name need distinguishing display names; a shared email cannot currently be reused for another player.
+- Script locking protects the duplicate check and row write. Empty rows with FALSE checkbox values are eligible; rows with other stored data are preserved. Successful creation appends COMMISSIONER_PLAYER_ADDED.
+- Local isolated backend tests passed: session and confirmation enforcement, input validation, name/email duplicate rejection, inactive/non-admin defaults, blank-checkbox row placement, occupied-row preservation, lock contention, repeat-submission rejection, audit call, and lock release after an audit failure. These used mocked services, not live data.
+- JavaScript syntax and ZIP integrity checks passed.
+- Editor read-only check passed against 27 records / 26 pool players / 24 active / 2 inactive, with no player/link/pick/Config/audit changes.
+- John updated the existing Apps Script deployment and pushed the three frontend files, confirming a clean working tree. Commit hashes for Add Player and its spacing fix were not supplied.
+- Live review/cancel and existing-name rejection checks passed. John then confirmed actual creation, inactive/zero-link state, updated counts, audit entry, and repeat-name rejection all passed.
+- Latest user-confirmed counts after creation: 28 player records, 27 pool players, 24 active, 3 inactive, 1 protected admin. The new participant remains inactive with zero links; their name was not supplied in this chat. No new final global stored-link total was measured.
+- Add Player spacing was corrected with 10px above its button group, matching the other button gaps. John verified the live appearance and a clean working tree.
+- Delivered ZIPs: SonoranGames-AddPlayer-Backend.zip, SonoranGames-AddPlayer-Frontend.zip, and SonoranGames-AddPlayer-Spacing.zip (CSS only).
+
+Future seasons and Super Bowl Squares
+- Add Player was originally queued after Recovery Tools for next season; John authorized building it now and it is implemented.
+- Current grading includes every active non-admin Players record. Keep future participants inactive until they should join the current NFL pool.
+- Adding an identity does not create season-specific or game-specific enrollment. No Squares enrollment, board, purchasing, payment, or access feature was implemented.
+- Super Bowl Squares remains a possible future project. If pursued, separate game/season participation must be designed so Squares-only participants do not enter NFL grading and existing identities can be reused.
+
+Next action
+- These results are approved for the Master Project Document. No additional feature was authorized by this documentation update.
+- Retain the manual rollover-button validation distinction above; do not force a live rollover to close it.
+- Agree the next project with John. Do not restart accepted Player Controls, Recovery Tools sync/cancel/audit, or Add Player tests without a new issue.
+
+END OCTOBER 10 CHECKPOINT
+
+
+HISTORICAL CHECKPOINT — OCTOBER 9, 2026
+Commissioner Dashboard / Player Controls — Checkpoint 5B COMPLETE
+
+John confirmed and approved completion on October 9, 2026. This checkpoint supersedes older statements below that place player management exclusively in a future phase. Sections describing August milestones remain historical; this update does not certify all unrelated roadmap items as current or complete.
+
+Delivered backend and frontend
+- Apps Script implementation and editor tests are in CommissionerPlayerControls.gs. There is no separate PlayerControlsTests.gs file.
+- Protected POST routes: getCommissionerPlayerControls and runCommissionerPlayerAction.
+- Both routes require a valid Commissioner session. Missing-session rejection and authenticated read tests passed; the temporary test session was removed.
+- Administrator records are excluded from selectable pool players and protected against modification.
+- Generate New Link adds a link while retaining existing links; an active player is required.
+- Rotate Link replaces all prior links with exactly one new link; an active player is required.
+- Revoke All Links removes all stored links for the selected pool player.
+- Activate and Deactivate change participation status. Deactivation preserves stored links and saved picks; reactivation allows preserved links to work again.
+- Newly generated links are shown for copying one time. Stored tokens are represented by SHA-256 hashes and are not exposed through the read payload.
+- Mutating actions append Commissioner player audit entries.
+- Frontend files: commissioner.html, assets/js/commissioner.js, assets/css/commissioner.css.
+- UI includes player/count display, action availability, confirmation/cancel, one-time link display/copy, and refreshed player state.
+- Visual polish approved: gray disabled buttons, 2px sage borders on enabled action buttons, brighter green success messages, normal instruction text, red error messages.
+
+Verification and final state
+- Foundation read-only validation: 27 player records, 26 pool players, 24 active, 2 inactive, 1 protected admin, 28 stored player-link entries at that checkpoint.
+- Controlled AndrewW Activate → Deactivate editor test passed. Complete Players data and all stored player-link entries were restored/preserved.
+- All five actions passed live testing. Generate displayed/copied a usable Andrew link. Rotate retained one link; replacement identified Andrew and the actual original URL was rejected. Revoke reduced Andrew to zero links and the replacement URL was rejected. Activate/Deactivate restored the intended participation state.
+- Final user-confirmed state: AndrewW inactive with 0 stored links; 26 pool players, 24 active, 2 inactive, 1 protected admin.
+- The initial 28-entry token total is a historical baseline, not a newly measured final global total.
+- Refreshing an older Picks tab after opening a replacement link can use the replacement token: picks.js removes the player query parameter after saving it, and navigation.js shares the latest saved token across tabs through localStorage. Test revocation using the actual original URL. No Picks-page change was made for this behavior.
+- JavaScript syntax validation and ZIP integrity checks passed. Live functional and visual acceptance was performed by John.
+
+Git deployment record
+- 4d44db0 — Add Commissioner Player Controls.
+- 39040b3 — Polish Commissioner Player Controls feedback.
+- b14e334 — Improve Player Controls button borders and success color.
+- Latest commit pushed to master; final git status confirmed synchronized origin/master and a clean working tree.
+- Apps Script was updated using the existing deployment, retaining the endpoint URL/settings. Later visual-only changes required no Apps Script deployment.
+
+Working preferences confirmed
+- Deliver website file changes in ZIP archives with repository-relative paths.
+- Routine benign changes: git add specific files → git status and review staged filenames → git commit -m with a descriptive message → git push → final git status.
+- Omit routine diff checks unless a concrete concern warrants them, such as authentication, player data, scoring, or unexpected files.
+- Give exact commands and proceed in manageable steps when John performs local actions.
+- PNG screenshot attachments encountered missing-file errors in this chat; PDF screenshots worked. Do not infer that a failed attachment was inspected.
+
+Next action
+Player Controls is complete. Resume broader Commissioner Dashboard planning from the latest project context; do not repeat completed Player Controls tests or treat the historical August next-step list as the current sprint without reconciliation.
+
+END CURRENT CHECKPOINT
+
+Use this document as the foundational reference for a new ChatGPT workspace.
+
+1. Project Overview
+Project name
+
+Sonoran Games
+
+Public website
+
+SonoranGames.com
+
+Former domain
+
+SonoranGamesAZ.com
+
+The former domain is being retained temporarily as a courtesy redirect for 2025 participants who may continue using the old address. The registration comes due July 11, 2027, and the intention is to discontinue the domain rather than maintain it permanently.
+
+All four old-domain variations currently redirect successfully:
+
+http://sonorangamesaz.com
+https://sonorangamesaz.com
+http://www.sonorangamesaz.com
+https://www.sonorangamesaz.com
+
+Destination:
+
+https://sonorangames.com
+Project purpose
+
+Sonoran Games is a private NFL Pick’em platform designed for approximately 20–25 players.
+
+It should provide:
+
+player registration and participation
+weekly NFL game selections
+automated NFL schedules, scores, and winners
+automated pick grading
+weekly winners
+season standings and rankings
+historical results
+an attractive, responsive, interactive website
+little or no weekly manual data entry
+
+The project should remain essentially free to operate, apart from annual domain registration.
+
+Ultimate goal
+
+Build a polished, enjoyable NFL Pick’em application that feels like a real sports platform while continuing to use:
+
+GitHub Pages for free website hosting
+Google Sheets for data storage and administration
+Google Apps Script for backend logic and JSON APIs
+the native Sonoran Games website for weekly picks
+ESPN’s scoreboard data as the primary NFL schedule and score source
+
+The system must be reusable for the 2026 season and future seasons without rebuilding the underlying architecture each year.
+
+2. Current Project Status
+Overall status
+
+The infrastructure, visual direction, website prototypes, ESPN proof of concept, and approved workbook foundation are functioning or verified.
+
+The project is now focused on the critical-path backend required for the 2026 season:
+
+native Picks-page submission and retrieval
+player identification and access
+per-game kickoff locking and updates
+automated grading
+weekly results and season standings
+end-to-end player and mobile testing
+Completed infrastructure
+SonoranGames.com purchased through Namecheap
+GitHub repository renamed from sonorangamesaz to sonorangames
+GitHub Pages custom domain changed to sonorangames.com
+repository CNAME file updated to:
+sonorangames.com
+local Git remote updated to:
+https://github.com/jchleborad/sonorangames.git
+GitHub Pages continues to publish from:
+Branch: master
+Folder: / (root)
+GoatCounter account/site changed from sonorangamesaz to sonorangames
+old-domain references are being cleaned from code and branding
+SonoranGamesAZ.com moved to Cloudflare DNS
+Cloudflare redirect rule created and verified
+all HTTP/HTTPS and www/non-www forms of the old domain now redirect successfully
+Google Sheets master workbook created
+Apps Script project created and authorized
+ESPN schedule/score retrieval successfully tested
+ESPN game winners were verified against actual Week 1 and Week 2 results
+upsert architecture successfully preserves multiple weeks rather than overwriting data
+AuditLog successfully records test and synchronization activity
+Players loader successfully reads player records
+Config helpers successfully read the active season and week
+3. Core Architecture
+Current free architecture
+Players
+   │
+   ▼
+SonoranGames.com native Picks page
+   │
+   ▼
+Google Apps Script submission API
+   │
+   ▼
+Google Sheets
+   │
+   ├── Schedule
+   ├── Scores
+   ├── Players
+   ├── Picks
+   ├── Results
+   └── Standings
+   │
+   ▼
+Google Apps Script
+   │
+   ├── ESPN data ingestion
+   ├── Pick normalization
+   ├── Pick grading
+   ├── Standings calculation
+   └── JSON endpoints
+   │
+   ▼
+GitHub Pages
+   │
+   ▼
+SonoranGames.com
+Hosting and scaling decision
+
+For the current target of 20–25 players:
+
+GitHub Pages remains the free frontend host.
+Google Sheets serves as the lightweight database.
+Google Apps Script serves as the backend/API.
+The native Picks page sends player submissions to Google Apps Script. Google Forms are not part of the weekly-picks architecture.
+
+A future scaled version could replace Apps Script and Sheets with:
+
+a hosted API
+Supabase, Firebase, PostgreSQL, or another database
+authentication
+optional paid hosting
+
+The frontend should therefore consume clean JSON endpoints so the backend can eventually be replaced without redesigning the entire website.
+
+4. Established Technical Decisions
+Entire-season storage
+
+Schedule and ScoresLive will retain all 18 regular-season weeks.
+
+They will not be overwritten when the current week changes.
+
+The engine uses an upsert model:
+
+If a game ID already exists, update the existing row.
+If it does not exist, append a new row.
+
+This allows:
+
+changed kickoff dates or times
+postponed games
+score updates
+corrections
+season history
+past-week pages
+weekly winner history
+recalculation
+Stable identifiers
+
+All game-related tables must use ESPN’s stable:
+
+game_id
+
+Do not match data only through strings such as:
+
+Chiefs vs Chargers
+
+Player records use a stable:
+
+player_id
+
+The player ID should distinguish duplicate first names.
+
+Current example:
+
+JohnC
+
+Lowercase IDs such as johnc were suggested for easier comparisons, but the existing capitalization is not technically invalid. Whichever convention is chosen should be consistent.
+
+Multi-season support
+
+Every major data table should include:
+
+season
+week
+
+No core function should be hardcoded permanently to 2026.
+
+Reusable functions should accept or read:
+
+season
+week
+seasonType
+
+Examples:
+
+syncWeekFromEspn_(season, week, seasonType)
+gradeWeek(season, week)
+updateSeasonStandings(season)
+NFL data source
+
+Primary source:
+
+ESPN scoreboard data
+
+Test endpoint pattern:
+
+https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2025&seasontype=2&week=1
+
+ESPN season types:
+
+1 = preseason
+2 = regular season
+3 = postseason
+
+NFL.com page scraping was rejected as the primary source because it is not structured as a dependable HTML table and is more likely to break.
+
+Schedule changes
+
+Schedule synchronization must update existing games by game_id.
+
+If the NFL changes a Week 8 game:
+
+kickoff information updates
+the game retains the same database relationship
+player picks remain tied to the same game ID
+unusual cases can be handled through ManualOverrides
+
+Pick-lock policy still needs to be formally established for games whose kickoff time changes after submissions begin.
+
+5. Google Sheets Workbook
+Workbook name
+SonoranGamesAZ Master
+
+The workbook was originally named this before the domain change. It may be renamed to:
+
+Sonoran Games Master
+
+This rename is optional and should not affect the code because the Apps Script project is container-bound to the workbook.
+
+Apps Script project name
+
+Originally:
+
+SonoranGamesAZ Engine
+
+Recommended updated name:
+
+Sonoran Games Engine
+
+Renaming the Apps Script project does not affect its code.
+
+Tab order
+1. Config
+2. Schedule
+3. ScoresLive
+4. Players
+5. PicksRaw
+6. PicksNormalized
+7. WeeklyResults
+8. SeasonStandings
+9. ManualOverrides
+10. AuditLog
+Config
+
+Current horizontal layout:
+
+current_season
+current_week
+picks_open
+picks_close_datetime
+results_lock
+refresh_enabled
+last_score_sync
+season_type
+
+Example row:
+
+2026 | 1 | TRUE | [blank] | FALSE | FALSE | [blank] | REG
+
+The current Config implementation reads headers from row 1 and values from row 2.
+
+Schedule
+
+Headers:
+
+season
+week
+game_id
+kickoff_utc
+kickoff_local
+away_team
+home_team
+away_abbr
+home_abbr
+network
+status
+winning_team
+result_final
+week_sort
+
+Notes:
+
+one row per NFL game
+all weeks retained
+game_id is the unique key
+kickoff_local should be formatted in Google Sheets as Date time
+result_final is TRUE/FALSE
+winning_team stores the abbreviation
+week_sort controls game order within the week
+ScoresLive
+
+Headers:
+
+season
+week
+game_id
+status
+quarter
+clock
+away_team
+home_team
+away_score
+home_score
+winner
+is_final
+last_updated
+
+Notes:
+
+all season weeks retained
+row updated as game status changes
+used for pick grading
+live/final website display will read from this table
+Players
+
+Headers:
+
+player_id
+display_name
+email
+active
+admin
+tiebreaker_enabled
+created_date
+notes
+
+Rules:
+
+player IDs must be unique
+duplicate first names require at least a last initial
+examples:
+JohnC
+TomS
+BillM
+active, admin, and tiebreaker_enabled should be actual TRUE/FALSE values
+PicksRaw
+
+Purpose:
+
+PicksRaw is the permanent, append-only receipt log for submissions received from the native Sonoran Games Picks page.
+
+One row represents one submitted weekly card or later update. It preserves exactly what the website sent so disputes can be investigated and PicksNormalized can be rebuilt if necessary.
+
+The obsolete Week 1 through Week 18 column design came from the abandoned Google Forms concept and must be replaced before the submission endpoint is built.
+
+The final headers will be approved as part of the native submission contract. The working design includes:
+
+submission_id
+received_at_utc
+season
+competition_id
+week
+player_id
+player_name
+client_submitted_at_utc
+picks_json
+tiebreaker
+submission_type
+processing_status
+processed_at_utc
+error_message
+
+PicksRaw must remain append-only and untouched by calculations or manual cleanup.
+
+PicksNormalized
+
+Correct intended headers:
+
+season
+week
+player_id
+player_name
+submission_timestamp
+game_id
+pick_team
+pick_correct
+game_final
+picked_at_lock
+tiebreaker
+source_submission_id
+
+One row represents:
+
+one player
++
+one NFL game
++
+one selection
+
+Example:
+
+2026 | 1 | johnc | John C | timestamp | ESPN_GAME_ID | KC | TRUE | TRUE | TRUE | 44 | source ID
+
+This is the backbone of the grading system.
+
+WeeklyResults
+
+Headers:
+
+season
+week
+player_id
+player_name
+wins_correct
+losses_incorrect
+pending_games
+tiebreaker_guess
+tiebreaker_actual
+tiebreaker_diff
+weekly_rank
+week_win_flag
+last_updated
+
+One row per player per week.
+
+This table preserves:
+
+weekly performance
+weekly rank
+the winner of each week
+historical weekly champions
+SeasonStandings
+
+Headers:
+
+season
+player_id
+player_name
+weeks_won
+total_correct
+total_incorrect
+total_pending
+cumulative_points
+average_correct
+rank
+last_updated
+
+This table supports:
+
+cumulative rankings
+total correct picks
+weekly wins
+rank
+website standings
+
+The exact cumulative scoring formula should be verified against the existing pool rules.
+
+Historical context indicates a prior concept of:
+
+60% weekly wins
+40% total correct picks
+
+Do not implement this formula until John confirms whether it remains the intended 2026 scoring model.
+
+ManualOverrides
+
+Headers:
+
+game_id
+override_winner
+override_status
+notes
+active
+last_updated
+
+Used for:
+
+postponed games
+source-data errors
+NFL corrections
+canceled games
+commissioner decisions
+AuditLog
+
+Headers:
+
+timestamp
+action
+entity
+entity_id
+details
+triggered_by
+
+Examples currently recorded:
+
+TEST_FOUNDATION
+TEST_CONFIG
+TEST_PLAYERS
+TEST_ESPN_SCOREBOARD
+SYNC_WEEK_ESPN
+
+Future enhancement:
+
+Instead of only logging:
+
+Upserted 16 games
+
+log separate totals:
+
+Added: 16
+Updated: 0
+
+or:
+
+Added: 0
+Updated: 16
+6. Existing Apps Script Foundation
+Sheet constants
+const SHEETS = {
+  CONFIG: 'Config',
+  SCHEDULE: 'Schedule',
+  SCORES_LIVE: 'ScoresLive',
+  PLAYERS: 'Players',
+  PICKS_RAW: 'PicksRaw',
+  PICKS_NORMALIZED: 'PicksNormalized',
+  WEEKLY_RESULTS: 'WeeklyResults',
+  SEASON_STANDINGS: 'SeasonStandings',
+  MANUAL_OVERRIDES: 'ManualOverrides',
+  AUDIT_LOG: 'AuditLog'
+};
+Foundation helpers
+function getSheet_(sheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    throw new Error(`Missing sheet: ${sheetName}`);
+  }
+
+  return sheet;
+}
+
+function getHeaders_(sheetName) {
+  const sheet = getSheet_(sheetName);
+  return sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getValues()[0];
+}
+
+function getRowsAsObjects_(sheetName) {
+  const sheet = getSheet_(sheetName);
+  const values = sheet.getDataRange().getValues();
+
+  if (values.length < 2) return [];
+
+  const headers = values[0];
+
+  return values
+    .slice(1)
+    .filter(row => row.some(cell => cell !== ''))
+    .map((row, rowIndex) => {
+      const obj = { _rowNumber: rowIndex + 2 };
+
+      headers.forEach((header, index) => {
+        obj[header] = row[index];
+      });
+
+      return obj;
+    });
+}
+
+function clearDataRows_(sheetName) {
+  const sheet = getSheet_(sheetName);
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  if (lastRow > 1) {
+    sheet
+      .getRange(2, 1, lastRow - 1, lastCol)
+      .clearContent();
+  }
+}
+
+function writeObjects_(sheetName, objects) {
+  const sheet = getSheet_(sheetName);
+  const headers = getHeaders_(sheetName);
+
+  clearDataRows_(sheetName);
+
+  if (!objects || objects.length === 0) return;
+
+  const rows = objects.map(obj =>
+    headers.map(header => obj[header] ?? '')
+  );
+
+  sheet
+    .getRange(2, 1, rows.length, headers.length)
+    .setValues(rows);
+}
+
+writeObjects_() clears all existing data and should therefore not be used for production schedule or score synchronization.
+
+Audit logging
+function appendAuditLog_(action, entity, entityId, details) {
+  const sheet = getSheet_(SHEETS.AUDIT_LOG);
+
+  sheet.appendRow([
+    new Date(),
+    action,
+    entity,
+    entityId,
+    details,
+    'script'
+  ]);
+}
+Config helpers
+function getConfig_() {
+  const sheet = getSheet_(SHEETS.CONFIG);
+
+  const headers = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getValues()[0];
+
+  const values = sheet
+    .getRange(2, 1, 1, sheet.getLastColumn())
+    .getValues()[0];
+
+  const config = {};
+
+  headers.forEach((header, index) => {
+    config[header] = values[index];
+  });
+
+  return config;
+}
+
+function getCurrentSeason() {
+  return getConfig_().current_season;
+}
+
+function getCurrentWeek() {
+  return getConfig_().current_week;
+}
+
+Test:
+
+function testConfigHelpers() {
+  const season = getCurrentSeason();
+  const week = getCurrentWeek();
+
+  appendAuditLog_(
+    'TEST_CONFIG',
+    'config',
+    `${season}-W${week}`,
+    `Season=${season}, Week=${week}`
+  );
+
+  Logger.log(`Season: ${season}`);
+  Logger.log(`Week: ${week}`);
+}
+Player loader
+function loadPlayers_() {
+  const players = getRowsAsObjects_(SHEETS.PLAYERS);
+  const lookup = {};
+
+  players.forEach(player => {
+    if (!player.player_id) return;
+
+    const isActive =
+      player.active === true ||
+      String(player.active).toUpperCase() === 'TRUE';
+
+    lookup[player.player_id] = {
+      player_id: player.player_id,
+      display_name: player.display_name,
+      email: player.email,
+      active: isActive,
+      admin:
+        player.admin === true ||
+        String(player.admin).toUpperCase() === 'TRUE',
+      tiebreaker_enabled:
+        player.tiebreaker_enabled === true ||
+        String(player.tiebreaker_enabled).toUpperCase() === 'TRUE'
+    };
+  });
+
+  return lookup;
+}
+
+function testLoadPlayers() {
+  const players = loadPlayers_();
+  const playerIds = Object.keys(players);
+
+  appendAuditLog_(
+    'TEST_PLAYERS',
+    'players',
+    `${playerIds.length}`,
+    `Loaded ${playerIds.length} player(s): ${playerIds.join(', ')}`
+  );
+
+  Logger.log(players);
+}
+7. ESPN Import Code
+Fetch ESPN scoreboard
+function fetchEspnScoreboard_(season, week, seasonType) {
+  const url =
+    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard` +
+    `?dates=${season}&seasontype=${seasonType}&week=${week}`;
+
+  const response = UrlFetchApp.fetch(url, {
+    muteHttpExceptions: true
+  });
+
+  const statusCode = response.getResponseCode();
+
+  if (statusCode !== 200) {
+    throw new Error(
+      `ESPN request failed. Status: ${statusCode}`
+    );
+  }
+
+  return JSON.parse(response.getContentText());
+}
+Parse ESPN games
+function parseEspnGames_(data, season, week) {
+  const events = data.events || [];
+
+  return events.map((event, index) => {
+    const competition = event.competitions[0];
+    const competitors = competition.competitors;
+
+    const home = competitors.find(
+      competitor => competitor.homeAway === 'home'
+    );
+
+    const away = competitors.find(
+      competitor => competitor.homeAway === 'away'
+    );
+
+    const awayScore =
+      away.score === '' ? '' : Number(away.score);
+
+    const homeScore =
+      home.score === '' ? '' : Number(home.score);
+
+    const statusType = competition.status.type;
+    const isFinal = statusType.completed === true;
+
+    let winner = '';
+
+    if (isFinal) {
+      if (awayScore > homeScore) {
+        winner = away.team.abbreviation;
+      }
+
+      if (homeScore > awayScore) {
+        winner = home.team.abbreviation;
+      }
+
+      if (awayScore === homeScore) {
+        winner = 'TIE';
+      }
+    }
+
+    return {
+      season,
+      week,
+      game_id: event.id,
+      kickoff_utc: event.date,
+      kickoff_local: new Date(event.date),
+      away_team: away.team.displayName,
+      home_team: home.team.displayName,
+      away_abbr: away.team.abbreviation,
+      home_abbr: home.team.abbreviation,
+      network: '',
+      status: statusType.description,
+      winning_team: winner,
+      result_final: isFinal,
+      week_sort: index + 1,
+
+      scoreRow: {
+        season,
+        week,
+        game_id: event.id,
+        status: statusType.description,
+        quarter: competition.status.period || '',
+        clock: competition.status.displayClock || '',
+        away_team: away.team.displayName,
+        home_team: home.team.displayName,
+        away_score: awayScore,
+        home_score: homeScore,
+        winner,
+        is_final: isFinal,
+        last_updated: new Date()
+      }
+    };
+  });
+}
+8. Upsert Architecture
+Current upsert helper
+function upsertObjectsByKey_(sheetName, objects, keyField) {
+  const sheet = getSheet_(sheetName);
+  const headers = getHeaders_(sheetName);
+
+  if (!objects || objects.length === 0) return;
+
+  const existingRows = getRowsAsObjects_(sheetName);
+  const rowByKey = {};
+
+  existingRows.forEach(row => {
+    if (row[keyField]) {
+      rowByKey[String(row[keyField])] = row._rowNumber;
+    }
+  });
+
+  objects.forEach(obj => {
+    const key = String(obj[keyField]);
+
+    if (!key) return;
+
+    const rowValues = headers.map(
+      header => obj[header] ?? ''
+    );
+
+    if (rowByKey[key]) {
+      sheet
+        .getRange(
+          rowByKey[key],
+          1,
+          1,
+          headers.length
+        )
+        .setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+  });
+}
+
+Potential future optimization:
+
+The current implementation writes one row at a time. This is fine for the current scale but may later be changed to batch updates for efficiency.
+
+Reusable weekly sync
+function syncWeekFromEspn_(season, week, seasonType) {
+  const data = fetchEspnScoreboard_(
+    season,
+    week,
+    seasonType
+  );
+
+  const games = parseEspnGames_(
+    data,
+    season,
+    week
+  );
+
+  const scheduleRows = games.map(game => ({
+    season: game.season,
+    week: game.week,
+    game_id: game.game_id,
+    kickoff_utc: game.kickoff_utc,
+    kickoff_local: game.kickoff_local,
+    away_team: game.away_team,
+    home_team: game.home_team,
+    away_abbr: game.away_abbr,
+    home_abbr: game.home_abbr,
+    network: game.network,
+    status: game.status,
+    winning_team: game.winning_team,
+    result_final: game.result_final,
+    week_sort: game.week_sort
+  }));
+
+  const scoreRows = games.map(
+    game => game.scoreRow
+  );
+
+  upsertObjectsByKey_(
+    SHEETS.SCHEDULE,
+    scheduleRows,
+    'game_id'
+  );
+
+  upsertObjectsByKey_(
+    SHEETS.SCORES_LIVE,
+    scoreRows,
+    'game_id'
+  );
+
+  appendAuditLog_(
+    'SYNC_WEEK_ESPN',
+    'espn',
+    `${season}-W${week}`,
+    `Upserted ${games.length} game(s) for season ${season}, week ${week}`
+  );
+
+  return games.length;
+}
+Test functions
+function testSyncEspnWeek1() {
+  syncWeekFromEspn_(2025, 1, 2);
+}
+
+function testSyncEspnWeek2() {
+  syncWeekFromEspn_(2025, 2, 2);
+}
+
+Both tests succeeded. Week 2 was added without deleting Week 1.
+
+Current-week sync
+function syncCurrentWeekFromEspn() {
+  const config = getConfig_();
+
+  const season = Number(config.current_season);
+  const week = Number(config.current_week);
+
+  const seasonType = 2;
+
+  syncWeekFromEspn_(
+    season,
+    week,
+    seasonType
+  );
+}
+Legacy proof-of-concept
+
+The old function was renamed:
+
+legacyTestEspnScoreboard()
+
+Its calls to:
+
+writeObjects_(SHEETS.SCHEDULE, scheduleRows);
+writeObjects_(SHEETS.SCORES_LIVE, scoreRows);
+
+were removed so it cannot accidentally clear the production tables.
+
+It is retained only as reference code and should not be run for actual synchronization.
+
+9. Domain and Repository Details
+GitHub profile
+https://github.com/jchleborad
+Repository
+https://github.com/jchleborad/sonorangames
+Git remote
+origin  https://github.com/jchleborad/sonorangames.git
+Local project directory
+
+The original local path was:
+
+C:\Users\jchle\OneDrive\Documents\WebDevelopment\Programming\Chleborad\SonoranGamesAZ
+
+The project folder was intended to be renamed:
+
+SonoranGamesAZ
+
+to:
+
+SonoranGames
+
+Verify whether this folder rename was completed.
+
+There was also discussion about renaming the parent folder:
+
+Chleborad
+
+to:
+
+Websites
+
+This was not recommended as an immediate step because it could affect:
+
+VS Code workspaces
+shortcuts
+PowerToys Workspaces
+local scripts
+launch paths
+other website projects
+
+The parent folder should remain unchanged unless a deliberate broader reorganization is performed.
+
+Code search results
+
+The project was searched in VS Code for legacy references.
+
+Known references included:
+
+Sonoran Games AZ
+SonoranGamesAZ
+sonorangamesaz
+sonorangamesaz.com
+
+Locations included:
+
+_config.yml
+_layouts/default.html
+index.html
+login.html
+pages/nflpool.html
+pages/superbowl-squares.html
+GoatCounter references
+documentation filenames
+
+The exact phrase:
+
+Sonoran Games AZ
+
+can generally be replaced with:
+
+Sonoran Games
+
+After cleanup, search again for all legacy variants.
+
+10. Cloudflare Redirect Configuration
+Old domain
+sonorangamesaz.com
+Cloudflare nameservers
+bowen.ns.cloudflare.com
+joyce.ns.cloudflare.com
+Redirect-only DNS records
+A     @       192.0.2.1     Proxied
+A     www     192.0.2.1     Proxied
+
+MX and TXT/SPF records were retained.
+
+Redirect rule
+
+Rule name:
+
+Redirect SonoranGamesAZ
+
+Match:
+
+All incoming requests
+
+Dynamic destination expression:
+
+concat(
+  "https://sonorangames.com",
+  http.request.uri.path
+)
+
+Status:
+
+301 Permanent Redirect
+
+Preserve query string:
+
+Enabled
+
+All four URL variations eventually worked after DNS caches expired.
+
+The troubleshooting established that:
+
+Cloudflare was correctly configured.
+Local/Verizon DNS temporarily returned the former Namecheap forwarding IP.
+Cloudflare public DNS returned Cloudflare proxy addresses.
+A forced curl --resolve request confirmed the redirect rule worked.
+The apparent failure was DNS propagation/cache-related.
+
+Cloudflare SSL mode was temporarily changed from Full to Flexible as a diagnostic test.
+
+Verify the current mode. Returning it to Full was recommended after the redirect began working, although this redirect occurs at Cloudflare’s edge and does not require a working origin.
+
+11. Analytics
+New GoatCounter endpoint
+<script
+  data-goatcounter="https://sonorangames.goatcounter.com/count"
+  async
+  src="//gc.zgo.at/count.js">
+</script>
+
+The old endpoint was:
+
+https://sonorangamesaz.goatcounter.com/count
+
+Known pages containing GoatCounter included:
+
+_layouts/default.html
+index.html
+pages/superbowl-squares.html
+
+The new GoatCounter site preserves the old account as historical/archived analytics.
+
+12. Brand and Design Direction
+Phase 1 status
+
+Brand and Design System — discovery started
+
+No final colors, fonts, logo, or component styles have been chosen yet.
+
+User’s brand weighting
+40% Modern Software
+30% Southwest Character
+30% Professional Sports
+Seriousness level
+1 out of 10
+
+Interpretation:
+
+This does not mean childish or poorly designed.
+
+It means:
+
+relaxed
+welcoming
+easy
+friendly
+low-pressure
+fun rather than corporate
+professionally executed without feeling serious or intimidating
+Primary user questions
+
+When players visit or log in, the most important questions are:
+
+Who's leading?
+How did I do?
+
+The site should surface those answers quickly.
+
+User’s definition
+
+Sonoran Games is a place to have fun, friendly competition.
+
+Brand purpose
+
+Bring friends together through enjoyable NFL competition.
+
+Emerging mission
+
+Bring friends together through fun, friendly NFL competition.
+
+Emerging vision
+
+Create an enjoyable private NFL Pick’em experience that players look forward to visiting each week.
+
+Desired personality
+friendly
+modern
+clean
+competitive
+relaxed
+welcoming
+organized
+confident
+Should not feel
+corporate
+intimidating
+casino-like
+gambling-focused
+cluttered
+loud
+excessively technical
+like an imitation of ESPN, CBS, Fox Sports, DraftKings, or Yahoo
+Southwest treatment
+
+Southwest influence should be subtle and sophisticated.
+
+Possible visual language:
+
+copper
+desert sunset colors
+deep evening/navy skies
+sand neutrals
+warm earth tones
+restrained regional geometry or pattern
+
+Avoid:
+
+excessive cactus graphics
+novelty cowboy styling
+obvious Arizona clichés
+tourist-shop aesthetics
+Brand identity objective
+
+Someone should recognize Sonoran Games as its own product even if the logo is temporarily removed.
+
+Physical-place metaphor
+
+A follow-up question was posed but not yet answered:
+
+If Sonoran Games were a physical place, what would it be?
+
+Options discussed:
+
+neighborhood sports bar
+modern Apple Store
+luxury golf clubhouse
+a friend’s living room on Sunday with multiple TVs
+something else
+
+A preliminary guess was:
+
+A friend’s Sunday living room, organized with some modern-software polish.
+
+This remains unconfirmed and should be the first design-workshop question in the new workspace.
+
+13. Design System Scope
+
+The design system must be established before substantial page redesign work.
+
+Brand identity
+unique Sonoran Games identity
+platform personality
+brand statement
+design principles
+branding guidelines
+voice and tone
+Visual language
+primary palette
+secondary palette
+accent colors
+background colors
+card colors
+live status color
+final status color
+win color
+loss color
+locked color
+pending status color
+Typography
+display headings
+page headings
+body text
+tables
+statistics
+buttons
+numeric scores
+mobile readability
+UI components
+buttons
+cards
+tables
+navigation
+forms
+pick selectors
+badges
+alerts
+modals
+tooltips
+score cards
+standings rows
+live-game indicators
+empty states
+loading states
+Layout system
+desktop grid
+tablet behavior
+mobile grid
+responsive breakpoints
+spacing scale
+margins
+padding
+card sizing
+content width
+Navigation
+desktop navigation
+mobile navigation
+sticky header
+footer
+Icons and graphics
+logo refinement
+favicon
+trophy icon
+weekly winner icon
+live icon
+team icon/logo treatment
+loading graphic
+empty-state graphics
+Motion
+hover behavior
+transitions
+score updates
+live indicators
+loading animations
+reduced-motion accessibility
+Phase 1 deliverable
+
+A complete:
+
+Sonoran Games Design System
+
+Every future page should use this document.
+
+14. Development Roadmap
+Phase 0 — Foundation
+
+Status: Substantially complete
+
+Infrastructure
+completed: new domain
+completed: GitHub repository rename
+completed: Git remote update
+completed: GitHub Pages custom domain
+completed: CNAME update
+completed: GoatCounter migration
+completed: Cloudflare redirect
+completed: ESPN proof-of-concept
+completed: multi-week upsert proof
+verify: local project folder rename
+verify: remaining legacy branding
+verify: Cloudflare SSL mode after diagnostic changes
+Phase 1 — Brand and Design System
+
+Status: Started
+
+Deliverable:
+
+Sonoran Games Design System
+
+Immediate design discovery still needed:
+
+physical-place metaphor
+brand promise
+voice and tone
+design principles
+initial palette concepts
+typography direction
+logo direction
+component mood boards
+interface density
+mobile-first priorities
+Phase 2 — NFL Pool Platform
+Home page
+hero section
+countdown to kickoff
+current week’s games
+weekly winner
+season leader
+current standings
+recent news
+pool statistics
+calls to action
+Live scoreboard
+live updating games
+automatic refresh
+live indicators
+winning team highlights
+remaining games
+game status
+quarter and clock
+future: win probabilities
+Weekly picks
+pick submission
+My Picks
+locked picks
+remaining games
+confidence indicators, if adopted
+pick history
+deadline display
+pick-lock behavior
+Player dashboard
+weekly record
+season record
+rank movement
+weekly wins
+total correct picks
+pick percentages
+historical performance
+Weekly results
+weekly champion
+biggest upset
+closest finish
+perfect weeks
+weekly statistics
+historical weekly winners
+Season standings
+overall ranking
+wins/correct picks
+winning percentage
+weekly wins
+streaks
+tiebreakers
+rank movement
+Statistics and history
+team pick percentages
+most-picked teams
+biggest surprises
+historical standings
+weekly archives
+season archive
+Phase 3 — Polish
+Visual polish
+improved graphics
+final typography
+team logos
+animations
+loading effects
+empty states
+mobile optimization
+User experience
+faster navigation
+responsive behavior
+accessibility
+keyboard support where useful
+clearer error messages
+submission confirmation
+loading and offline states
+Performance
+optimized Apps Script calls
+reduced page load time
+caching
+fewer repeated API requests
+mobile performance
+Phase 4 — Future Enhancements
+
+These are outside the initial 2026 release.
+
+Administration
+admin dashboard
+player management
+automated season rollover
+rule management
+Player features
+trash talk/comments
+player profiles
+achievements
+badges
+pick trends
+Advanced statistics
+confidence rankings
+predictive analytics
+historical reports
+team performance charts
+Additional games
+Super Bowl Squares
+March Madness
+Survivor Pool
+College Football
+fantasy tools
+Long-term scale
+paid hosting
+dedicated database
+authentication
+email notifications
+SMS reminders
+mobile app
+public registration
+payment processing, only if ever needed
+15. Backend Development Remaining
+Immediate backend milestones
+1. Improve upsert logging
+
+Return and log:
+
+added
+updated
+unchanged
+errors
+2. Build entire-season synchronization
+
+Planned function:
+
+syncEntireSeason(season)
+
+Expected behavior:
+
+for (let week = 1; week <= 18; week++) {
+  syncWeekFromEspn_(season, week, 2);
+}
+
+Requirements:
+
+preserve all weeks
+update changed games
+avoid duplicate game IDs
+log each week
+log an overall summary
+avoid exceeding Apps Script quotas
+possibly use small pauses between requests
+3. Define the native Picks submission contract
+
+The approved player experience is the Sonoran Games Picks page. Define exactly:
+
+what the page sends
+how the player is identified
+how submissions and later updates are authenticated
+how each game selection is represented
+how the backend acknowledges a successful save
+how errors and duplicate requests are handled
+
+4. Replace the obsolete PicksRaw structure
+
+Replace the Week 1 through Week 18 columns with the approved native-submission receipt schema.
+
+Do not write normalizePicks() until the submission contract and raw receipt layout are finalized.
+
+5. Build pick normalization
+
+Planned function:
+
+normalizePicks()
+
+Responsibilities:
+
+read new native-site submissions recorded in PicksRaw
+resolve player identity
+resolve game IDs
+convert each submission into one row per player/game
+prevent duplicate normalization
+preserve source row/submission ID
+preserve original timestamp
+preserve tiebreaker
+6. Implement pick-lock rules
+
+Approved baseline:
+
+each game locks at its own kickoff
+Thursday games lock while later games remain editable
+the backend, not the player's device, determines whether a game is locked
+already-locked picks are never changed by a later card update
+
+Still requiring commissioner policy:
+
+behavior when the NFL changes a kickoff after submissions begin
+whether and under what circumstances the commissioner can reopen a selection
+7. Build grading
+
+Planned function:
+
+gradeWeek(season, week)
+
+Logic:
+
+final game + matching team = correct
+final game + nonmatching team = incorrect
+non-final game = pending
+8. Build weekly results
+
+Populate one row per player/week in WeeklyResults.
+
+9. Build season standings
+
+Planned function:
+
+updateSeasonStandings(season)
+
+Tie-ranking behavior previously suggested:
+
+1, 1, 3, 4
+
+The actual pool scoring and tie rules must be confirmed before final implementation.
+
+10. Build API endpoints
+
+Possible Apps Script actions:
+
+?action=config
+?action=matchups
+?action=scores
+?action=weeklyresults
+?action=standings
+?action=playerpicks
+?action=weeklysummary
+
+The website should consume logical JSON rather than raw sheet-shaped ranges.
+
+16. User Experience Priorities
+
+The website should answer these questions immediately:
+
+Who's leading?
+How did I do?
+What games are left?
+Are my picks locked?
+Who won this week?
+
+The platform should emphasize:
+
+fun
+friendliness
+simple participation
+clear results
+low friction
+mobile usability
+private-group competition
+
+It should not require users to understand the backend, spreadsheets, or scoring engine.
+
+17. Project Management System
+Name
+
+Sonoran Games Development Log
+
+Abbreviation:
+
+SGDL
+
+When John asks:
+
+Where are we?
+What's next?
+What did we decide?
+What's still open?
+
+Respond from the SGDL framework.
+
+SGDL sections
+Current Objective
+Status Dashboard
+Current Phase
+Current Sprint
+Roadmap
+Task List
+Development Log
+Decisions Log
+Issues and Risks
+Technical Debt
+Parking Lot
+Next Action
+Current objective
+
+Build an enjoyable, polished NFL Pick’em platform for 20–25 players that can operate with essentially no hosting cost using GitHub Pages, Google Apps Script, Google Sheets, and the native Sonoran Games Picks experience.
+
+Current phase
+Phase 2 — NFL Pool Platform
+Current sprint
+Sprint — Native Picks Submission Pipeline
+Current sprint deliverable
+An end-to-end player flow that identifies a player, loads the correct weekly card, saves and reloads picks, preserves submission history, updates only unlocked selections, and locks each game at kickoff.
+
+Current verified checkpoint — August 7, 2026
+
+All ten workbook tabs are in the approved order.
+The automated SheetSetup function completed successfully.
+Schedule, ScoresLive, Players, PicksNormalized, WeeklyResults, SeasonStandings, ManualOverrides, and AuditLog passed post-run inspection.
+Config and PicksRaw were intentionally excluded from automated modification.
+Historical 2025 season validation was corrected and verified.
+Config retains separate practice_2026 and official_2026 environments.
+The native Picks page is the approved player workflow.
+The Google Forms weekly-picks direction is withdrawn.
+PicksRaw remains the next schema requiring final resolution.
+Project Charter reminder
+
+A reminder was scheduled for:
+
+August 11, 2026
+
+Purpose:
+
+Create the Sonoran Games Project Charter covering:
+
+vision
+architecture
+coding standards
+roadmap
+
+The charter should eventually be integrated with the SGDL rather than becoming a conflicting document.
+
+18. Decisions Log
+D-001 — Player limit
+20–25 players maximum
+
+Reason:
+
+Keeps the free GitHub Pages + Google ecosystem practical.
+
+D-002 — Public domain
+SonoranGames.com
+D-003 — Legacy domain
+SonoranGamesAZ.com
+
+Temporary redirect only; likely discontinued after the registration period ending July 11, 2027.
+
+D-004 — Frontend hosting
+GitHub Pages
+D-005 — Data storage
+Google Sheets
+D-006 — Backend
+Google Apps Script
+D-007 — NFL data
+ESPN scoreboard endpoint
+D-008 — Data model
+
+Entire season retained in Schedule and ScoresLive.
+
+D-009 — Update method
+
+Use game-ID upserts; never overwrite the entire season during routine synchronization.
+
+D-010 — Brand identity
+
+Sonoran Games must have its own identity.
+
+Do not imitate:
+
+ESPN
+CBS Sports
+Fox Sports
+DraftKings
+Yahoo
+D-011 — Brand blend
+40% Modern Software
+30% Southwest Character
+30% Professional Sports
+D-012 — Tone
+Low seriousness: 1/10
+
+Fun and friendly, but professionally made.
+
+D-013 — Core purpose
+
+A place to have fun, friendly competition.
+
+D-014 — Historical data
+
+Preserve weekly winners and past results throughout the season.
+
+D-015 — Future portability
+
+Use clean JSON APIs so Apps Script/Sheets can eventually be replaced without rebuilding the entire frontend.
+
+D-016 — Weekly picks interface
+
+Players enter, review, submit, and update weekly selections directly on SonoranGames.com. Google Forms will not be used for weekly picks.
+
+D-017 — Raw and normalized pick records
+
+PicksRaw is an append-only receipt log containing one record per submitted card or update. PicksNormalized contains one current game-level record per player and game and is used for locking, grading, results, and display.
+
+D-018 — Game locking
+
+Each game locks independently at its official kickoff. A Thursday selection locks while later games remain editable. Backend time is authoritative.
+
+D-019 — Working ownership
+
+John owns pool rules, player experience, commissioner policy, financial/fairness decisions, and final acceptance. Codex owns technical architecture, implementation, testing, and documentation and should request John's input only when a decision materially affects rules, fairness, cost, privacy, security, destructive changes, or player experience.
+
+19. Formatting and Working Preferences
+John’s preferred working style
+operate autonomously for ordinary backend and architecture work
+batch related technical work into meaningful, tested checkpoints
+request John's input only when his business or commissioner judgment is genuinely required
+when John must perform an action, proceed slowly and give exact menus, buttons, fields, and commands
+use screenshots only when they materially verify a user-performed configuration or acceptance result
+explain material choices and tradeoffs without turning routine backend implementation into a lesson unless John asks
+avoid introducing unnecessary complexity
+flag contradictory recommendations
+be honest when uncertain
+maintain continuity across sessions
+record decisions so they do not need to be revisited repeatedly
+Code guidance
+provide complete copy/paste blocks
+identify exactly where code should be inserted
+identify which function to run
+explain the expected sheet/log result
+use descriptive function names
+trailing underscore indicates internal helper functions:
+getConfig_()
+loadPlayers_()
+syncWeekFromEspn_()
+public/test functions do not require the underscore:
+testLoadPlayers()
+syncCurrentWeekFromEspn()
+Sheet rules
+row 1 is always the header
+no merged cells
+no title rows above headers
+no blank rows within data
+no hardcoded ranges such as:
+A21:D38
+use headers, IDs, filters, and object mapping
+raw Form responses remain untouched
+use consistent team abbreviations
+use stable IDs
+Communication tone
+
+The site itself should feel:
+
+friendly
+relaxed
+welcoming
+fun
+competitive
+modern
+
+Avoid:
+
+gambling language
+corporate jargon
+overly serious sports-broadcast language
+excessive technical language in player-facing content
+20. Open Questions and Risks
+Native submission architecture
+
+The player interface is resolved: weekly selections are made on the Sonoran Games Picks page. The exact request/response contract, identity protection, idempotency behavior, and error handling must now be finalized.
+
+PicksRaw mismatch
+
+The current obsolete Week 1 through Week 18 header layout must be replaced with the append-only native-submission receipt schema before normalization code is written.
+
+Scoring rules
+
+Need explicit confirmation of:
+
+how weekly winners are determined
+how ties are resolved
+tiebreaker calculation
+whether weekly wins and total correct picks are weighted
+season champion formula
+Registration
+
+Need to define:
+
+public signup or invitation only
+approval process
+required information
+duplicate prevention
+player ID assignment
+whether email is required
+Pick visibility
+
+Need to decide:
+
+hide all picks until games lock
+reveal Thursday picks after Thursday lock
+reveal all picks after first kickoff
+reveal only after all submissions close
+Website authentication
+
+GitHub Pages has no native private user accounts.
+
+For the initial version, personalized Picks and My Picks require:
+
+a player-specific token
+email lookup
+a lightweight Apps Script approach
+or a less personalized public results model
+
+The access model must be finalized before player distribution. Do not overstate the security provided by a lightweight token-based system.
+
+ESPN dependency
+
+The ESPN endpoint is useful but not an officially contracted API for this project.
+
+Mitigation:
+
+ManualOverrides
+AuditLog
+error handling
+source validation
+possible future paid sports API
+Deadline
+
+The 2026 NFL season is approaching.
+
+The project should prioritize a reliable minimum viable product over optional advanced features.
+
+21. Immediate Next Steps
+First: define and implement the native Picks submission pipeline
+
+finalize the website-to-Apps-Script request and response contract
+finalize player identification and access protection
+approve and apply the new PicksRaw schema
+save an append-only receipt for every card submission or update
+normalize each card into one player/game row
+return a clear confirmation or actionable error to the Picks page
+
+Second: complete pick retrieval, updates, and locking
+
+load the player's saved weekly card
+update only selections for games that remain unlocked
+lock each game at kickoff using backend time
+preserve already-locked selections
+record all changes in the audit trail
+
+Third: complete the automated competition cycle
+
+improve ESPN upsert logging and entire-season synchronization
+build gradeWeek()
+populate WeeklyResults
+populate SeasonStandings
+expose the required JSON endpoints
+
+Fourth: test the 2026 minimum viable system
+
+practice and official competition separation
+multi-player end-to-end submission testing
+mobile-device testing
+kickoff-lock testing
+grading and standings verification
+error, recovery, and commissioner exception testing
+
+Operational-readiness target: September 1, 2026.
+22. Recommended New-Chat Opening Prompt
+
+Paste this Master Project Document into the new workspace, followed by:
+
+This is the complete working reference for the Sonoran Games project. Treat it as the project source of truth. Maintain the Sonoran Games Development Log, preserve established decisions, and explicitly record future changes. We are currently in Phase 2, Native Picks Submission Pipeline. Players make their selections directly on the Sonoran Games Picks page; Google Forms are not used for weekly picks. Codex owns ordinary technical architecture, implementation, testing, and documentation, escalating only material business, commissioner, fairness, cost, privacy, security, destructive-change, or player-experience decisions. Resume by defining the native Picks submission contract and final PicksRaw schema before writing normalization code.
