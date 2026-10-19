@@ -133,6 +133,37 @@
     return winners.map(player => player.player_name).join(', ');
   }
 
+  function weeklyRecord(player) {
+    return `${player.correct}-${player.incorrect}` + (Number(player.ties) > 0 ? `-${player.ties}` : '');
+  }
+
+  function getTiebreakerWins(history) {
+    const validDifference = player => player.tiebreaker_diff !== '' &&
+      player.tiebreaker_diff !== null && player.tiebreaker_diff !== undefined &&
+      Number.isFinite(Number(player.tiebreaker_diff)) && Number(player.tiebreaker_diff) >= 0;
+    const points = player => player.pick_points !== '' && player.pick_points !== null &&
+      player.pick_points !== undefined && Number.isFinite(Number(player.pick_points))
+      ? Number(player.pick_points) : Number(player.correct || 0) + 0.5 * Number(player.ties || 0);
+    return history.flatMap(result => {
+      const players = Array.isArray(result.players) ? result.players : [];
+      const winners = Array.isArray(result.winners) ? result.winners : [];
+      if (!players.length || !winners.length || players.some(player => Number(player.pending || 0) !== 0)) return [];
+      const top = Math.max(...players.map(points));
+      const leaders = players.filter(player => points(player) === top);
+      if (leaders.length < 2 || leaders.some(player => !validDifference(player))) return [];
+      const closest = Math.min(...leaders.map(player => Number(player.tiebreaker_diff)));
+      const finalists = leaders.filter(player => Number(player.tiebreaker_diff) === closest);
+      const winnerIds = new Set(winners.map(player => player.player_id));
+      if (finalists.length >= leaders.length || winnerIds.size !== finalists.length ||
+          finalists.some(player => !player.player_id || !winnerIds.has(player.player_id))) return [];
+      return [{ ...finalists[0], week: Number(result.week), tied_leaders: leaders.length,
+        player_name: finalists.map(player => player.player_name).join(', '),
+        tiebreaker_guess: finalists.map(player => player.tiebreaker_guess).join(' / '),
+        shared_win: finalists.length > 1
+      }];
+    });
+  }
+
   function renderLatestChampion(latest) {
     const winners = Array.isArray(latest.winners) ? latest.winners : [];
     const week = Number(latest.week || 0);
@@ -149,7 +180,8 @@
     if (winners.length === 1) {
       const winner = winners[0];
       winnerTitle.textContent = winner.player_name;
-      winnerLead.textContent = `${winner.correct} correct · ${winner.incorrect} incorrect`;
+      winnerLead.textContent = `${winner.correct} correct · ${winner.incorrect} incorrect` +
+        (Number(winner.ties) > 0 ? ` · ${winner.ties} tie${Number(winner.ties) === 1 ? '' : 's'}` : '');
 
       if (winner.tiebreaker_diff === 0) {
         winnerCopy.textContent = `Tiebreaker bullseye: ${winner.tiebreaker_guess} matched the actual ${winner.tiebreaker_actual}.`;
@@ -192,7 +224,7 @@
       ? latestFirst.player_name
       : `${latestWinners.length} co-champions`;
     const latestRecord = latestFirst
-      ? `${latestFirst.correct}-${latestFirst.incorrect}`
+      ? weeklyRecord(latestFirst)
       : 'Final';
     const latestNames = latestWinners.length > 1
       ? `<small>${escapeHtml(formatWinnerNames(latestWinners))}</small>`
@@ -223,7 +255,7 @@
         ? first.player_name
         : `${winners.length} co-champions`;
       const record = first
-        ? `${first.correct}-${first.incorrect}`
+        ? weeklyRecord(first)
         : 'Final';
       const names = winners.length > 1
         ? `<small>${escapeHtml(formatWinnerNames(winners))}</small>`
@@ -401,64 +433,15 @@
 
     if (!rows.length || !latestPlayers.length) return facts;
 
-    // 1. Exact tiebreaker hit
-    const exactTb = rows.filter(row => Number(row.tiebreaker_diff) === 0);
-    if (exactTb.length) {
-      const mostRecent = exactTb.slice().sort((a, b) => b.week - a.week)[0];
-      facts.push(makeFact(
-        'exact-tiebreaker',
-        100,
-        'tiebreaker',
-        `${mostRecent.player_name} hit the Week ${mostRecent.week} tiebreaker exactly at ${mostRecent.tiebreaker_actual}.`
-      ));
-    }
-
-    // 2. Multiple exact tiebreakers
-    const exactByWeek = history
-      .map(weekResult => ({
-        week: Number(weekResult.week || 0),
-        players: (weekResult.players || []).filter(player => Number(player.tiebreaker_diff) === 0)
-      }))
-      .filter(item => item.players.length > 1);
-
-    if (exactByWeek.length) {
-      const item = exactByWeek.slice().sort((a, b) => b.week - a.week)[0];
-      facts.push(makeFact(
-        'multiple-exact-tiebreakers',
-        91,
-        'tiebreaker',
-        `Week ${item.week} had ${item.players.length} tiebreaker bullseyes: ${item.players.map(player => player.player_name).join(', ')}.`
-      ));
-    }
-
-    // 3. One-point tiebreaker miss
-    const oneAway = rows.filter(row => Number(row.tiebreaker_diff) === 1);
-    if (oneAway.length) {
-      const mostRecent = oneAway.slice().sort((a, b) => b.week - a.week)[0];
-      facts.push(makeFact(
-        'one-away-tiebreaker',
-        82,
-        'tiebreaker',
-        `${mostRecent.player_name} missed the Week ${mostRecent.week} tiebreaker by just 1 point.`
-      ));
-    }
-
-    // 4. Closest tiebreaker of the season
-    const validTbs = rows
-      .filter(row => row.tiebreaker_diff !== '' && row.tiebreaker_diff !== null && row.tiebreaker_diff !== undefined)
-      .filter(row => Number.isFinite(Number(row.tiebreaker_diff)));
-
-    if (validTbs.length) {
-      const closest = validTbs.slice().sort((a, b) =>
-        Number(a.tiebreaker_diff) - Number(b.tiebreaker_diff) ||
-        b.week - a.week
+    // Only recognize predictions that actually decided a weekly win.
+    const tiebreakerWins = getTiebreakerWins(history);
+    if (tiebreakerWins.length) {
+      const closest = tiebreakerWins.slice().sort((a, b) =>
+        Number(a.tiebreaker_diff) - Number(b.tiebreaker_diff) || b.week - a.week
       )[0];
-
       facts.push(makeFact(
-        'closest-tiebreaker-season',
-        Number(closest.tiebreaker_diff) === 0 ? 88 : 74,
-        'tiebreaker',
-        `${closest.player_name} owns the closest tiebreaker of the season at ${closest.tiebreaker_diff} ${plural(closest.tiebreaker_diff, 'point')} away in Week ${closest.week}.`
+        'closest-tiebreaker-win', 100, 'tiebreaker',
+        `${closest.player_name} ${closest.shared_win ? 'shared the Week ' + closest.week + ' win' : 'won Week ' + closest.week} on the tiebreaker after ${closest.tied_leaders} players tied for first: ${closest.tiebreaker_guess} vs. ${closest.tiebreaker_actual} actual (${closest.tiebreaker_diff} ${plural(closest.tiebreaker_diff, 'point')} away).`
       ));
     }
 
@@ -529,14 +512,14 @@
         'second-place-logjam',
         96,
         'finish',
-        `Week ${latestWeek} had a crowd behind the winner: ${secondPlace.length} players tied for second at ${secondPlace[0].correct}-${secondPlace[0].incorrect}.`
+        `Week ${latestWeek} had a crowd behind the winner: ${secondPlace.length} players tied for second at ${weeklyRecord(secondPlace[0])}.`
       ));
     }
 
     // 10. Large record cluster anywhere in the latest week
     const recordGroups = new Map();
     latestPlayers.forEach(player => {
-      const key = `${player.correct}-${player.incorrect}`;
+      const key = weeklyRecord(player);
       if (!recordGroups.has(key)) recordGroups.set(key, []);
       recordGroups.get(key).push(player);
     });
@@ -818,9 +801,7 @@
 
   function renderRecords(history, latest, season) {
     const rows = getAllWeekRows(history);
-    const validTbs = rows
-      .filter(row => row.tiebreaker_diff !== '' && row.tiebreaker_diff !== null && row.tiebreaker_diff !== undefined)
-      .filter(row => Number.isFinite(Number(row.tiebreaker_diff)));
+    const validTbs = getTiebreakerWins(history);
 
     const best = rows.length
       ? rows.slice().sort((a, b) =>
@@ -853,8 +834,8 @@
       </div>
       <div class="stat">
         <strong>${closest ? closest.tiebreaker_diff : '—'}</strong>
-        <span>Closest Tiebreaker</span>
-        <small>${closest ? `${escapeHtml(closest.player_name)} · Wk ${closest.week}` : '—'}</small>
+        <span>Closest Tiebreaker Win</span>
+        <small>${closest ? `${escapeHtml(closest.player_name)} · Wk ${closest.week}` : 'No weeks decided by a tiebreaker yet.'}</small>
       </div>
       <div class="stat">
         <strong>${maxWeeksWon || '—'}</strong>
