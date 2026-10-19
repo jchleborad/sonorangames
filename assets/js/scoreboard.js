@@ -19,15 +19,15 @@
     requestedWeek
       ? clampWeek(requestedWeek)
       : MIN_WEEK;
+  let seasonCurrentWeek = null;
   let scoreboard = null;
   let whoPickedWho = null;
   let loading = false;
 
   const seasonLabel = document.querySelector('[data-scoreboard-season]');
   const title = document.querySelector('[data-scoreboard-title]');
-  const prevButton = document.querySelector('[data-week-prev]');
-  const currentWeekButton = document.querySelector('[data-week-current]');
-  const nextButton = document.querySelector('[data-week-next]');
+  const weekSelect = document.querySelector('[data-week-select]');
+  const syncStatusLabel = document.querySelector('[data-sync-status]');
   const refreshButton = document.querySelector('[data-refresh]');
   const freshness = document.querySelector('[data-freshness]');
   const message = document.querySelector('[data-scoreboard-message]');
@@ -153,15 +153,11 @@
       refreshButton.textContent = isLoading ? 'Refreshing…' : 'Refresh Scores';
     }
 
-    if (isLoading && freshness) {
-      const textNode = freshness.firstChild;
-      if (textNode) {
-        textNode.textContent = 'Loading scores… ';
-      }
+    if (isLoading && syncStatusLabel && !allScoreboardGamesFinal(scoreboard)) {
+      syncStatusLabel.hidden = false;
+      syncStatusLabel.textContent = 'Loading scores…';
     }
-
-    if (prevButton) prevButton.disabled = isLoading || currentWeek <= MIN_WEEK;
-    if (nextButton) nextButton.disabled = isLoading || currentWeek >= MAX_WEEK;
+    if (weekSelect) weekSelect.disabled = isLoading;
   }
 
   function showMessage(text) {
@@ -437,22 +433,14 @@
   function renderHeader(payload) {
     if (seasonLabel) seasonLabel.textContent = `${payload.season} Regular Season`;
     if (title) title.textContent = `Week ${payload.week} scoreboard`;
-    if (currentWeekButton) currentWeekButton.textContent = `Week ${payload.week}`;
-
-    if (prevButton) {
-      prevButton.textContent = 'Previous';
-
-      prevButton.disabled =
-        payload.week <= MIN_WEEK ||
-        loading;
-    }
-
-    if (nextButton) {
-      nextButton.textContent = 'Next';
-
-      nextButton.disabled =
-        payload.week >= MAX_WEEK ||
-        loading;
+    if (weekSelect) {
+      const lastWeek = seasonCurrentWeek || Number(payload.week);
+      weekSelect.replaceChildren(...Array.from({ length: lastWeek }, (_, index) => {
+        const week = index + 1;
+        return new Option(`Week ${week}${week === seasonCurrentWeek ? ' — Current' : ''}`, String(week));
+      }));
+      weekSelect.value = String(payload.week);
+      weekSelect.disabled = loading;
     }
   }
 
@@ -463,18 +451,22 @@
     }
   }
 
+  function allScoreboardGamesFinal(payload) {
+    return Boolean(payload && Array.isArray(payload.games) && payload.games.length &&
+      payload.games.every(game => phaseKey(game) === 'final'));
+  }
+
   function renderFreshness(payload) {
-    if (!freshness) return;
-
-    const syncStatus = formatSyncStatus(payload.last_updated_utc);
-    let textNode = freshness.firstChild;
-
-    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-      textNode = document.createTextNode('');
-      freshness.insertBefore(textNode, freshness.firstChild);
+    if (!freshness || !syncStatusLabel) return;
+    const complete = allScoreboardGamesFinal(payload);
+    syncStatusLabel.hidden = complete;
+    if (complete) {
+      syncStatusLabel.textContent = '';
+      freshness.classList.remove('is-stale');
+      return;
     }
-
-    textNode.textContent = `${syncStatus.text} `;
+    const syncStatus = formatSyncStatus(payload.last_updated_utc);
+    syncStatusLabel.textContent = syncStatus.text + ' ';
     freshness.classList.toggle('is-stale', syncStatus.stale);
   }
 
@@ -750,7 +742,7 @@
 
     try {
       const [scorePayload, whoResult] = await Promise.all([
-        fetchScoreboard(targetWeek),
+        options.payload ? Promise.resolve(options.payload) : fetchScoreboard(targetWeek),
         fetchWhoPickedWho(targetWeek).catch(error => {
           console.warn('Who Picked Who load failed:', error);
           return null;
@@ -772,6 +764,8 @@
         renderFreshness(scoreboard);
       }
 
+      if (weekSelect) weekSelect.value = String(priorWeek);
+
       if (targetWeek !== priorWeek) {
         showMessage(`Week ${targetWeek} scoreboard is not available yet.`);
       } else {
@@ -781,15 +775,6 @@
       setLoading(false);
       if (scoreboard) renderHeader(scoreboard);
     }
-  }
-
-  function changeWeek(offset) {
-    if (loading) return;
-
-    const targetWeek = clampWeek(currentWeek + offset);
-    if (targetWeek === currentWeek) return;
-
-    loadScoreboard(targetWeek);
   }
 
   document.addEventListener('click', event => {
@@ -822,9 +807,14 @@
 
   window.addEventListener('resize', () => updateOverflowCues());
 
-  if (prevButton) prevButton.addEventListener('click', () => changeWeek(-1));
-  if (nextButton) nextButton.addEventListener('click', () => changeWeek(1));
-  if (refreshButton) refreshButton.addEventListener('click', () => loadScoreboard(currentWeek, { refresh: true }));
+  if (weekSelect) weekSelect.addEventListener('change', () => {
+    const selectedWeek = positiveInteger(weekSelect.value);
+    if (!loading && selectedWeek && selectedWeek !== currentWeek) loadScoreboard(selectedWeek);
+  });
+  if (refreshButton) refreshButton.addEventListener('click', () => {
+    if (seasonCurrentWeek === null) { if (!loading) initializeScoreboard(); }
+    else loadScoreboard(currentWeek, { refresh: true });
+  });
   if (playerScoreboardButton) playerScoreboardButton.addEventListener('click', openPlayerScoreboard);
   if (playerScoreboardCloseButton) playerScoreboardCloseButton.addEventListener('click', closePlayerScoreboard);
 
@@ -840,9 +830,21 @@
     }
   });
 
-  loadScoreboard(
-    requestedWeek
-      ? currentWeek
-      : null
-  );
-  })();
+  async function initializeScoreboard() {
+    setLoading(true);
+    try {
+      const current = await fetchScoreboard(null);
+      seasonCurrentWeek = clampWeek(Number(current.week));
+      const targetWeek = requestedWeek ? Math.min(clampWeek(requestedWeek), seasonCurrentWeek) : seasonCurrentWeek;
+      setLoading(false);
+      await loadScoreboard(targetWeek, {
+        payload: targetWeek === seasonCurrentWeek ? current : null
+      });
+    } catch (error) {
+      setLoading(false);
+      showMessage('Scores are temporarily unavailable. Please try Refresh Scores again.');
+    }
+  }
+
+  initializeScoreboard();
+})();

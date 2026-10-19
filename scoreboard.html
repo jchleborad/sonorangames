@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Live NFL scores for Sonoran Games."><title>Live Scores · Sonoran Games</title>
   <link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/assets/css/tokens.css"><link rel="stylesheet" href="/assets/css/components.css"><link rel="stylesheet" href="/assets/css/site.css"><link rel="stylesheet" href="/assets/css/scoreboard-who-picked-who.css"><link rel="stylesheet" href="/assets/css/scoreboard-player-scoreboard.css">
+  <link rel="stylesheet" href="/assets/css/scoreboard-controls.css">
 </head>
 <body>
   <header class="site-header"><div class="container nav-wrap"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">☰</button><nav class="nav-links" id="site-nav" data-nav-links><a href="/">Home</a><a href="/scoreboard.html" aria-current="page">Scores</a><a href="/picks.html">Picks</a><a href="/standings.html">Standings</a><a href="/winners.html">Winners</a><a href="/rules.html">Rules</a></nav></div></header>
@@ -15,9 +16,10 @@
         </div>
         <div class="scoreboard-actions">
           <div class="week-nav" aria-label="Week navigation">
-            <button type="button" data-week-prev>‹ Previous</button>
-            <button type="button" data-week-current disabled>Week 1</button>
-            <button type="button" data-week-next>Next ›</button>
+            <label class="sr-only" for="scoreboard-week-select">Choose scoreboard week</label>
+            <select id="scoreboard-week-select" data-week-select disabled>
+              <option value="">Loading weeks…</option>
+            </select>
           </div>
           <button class="button player-scoreboard-trigger" type="button" data-player-scoreboard-open>Player Scoreboard</button>
         </div>
@@ -28,7 +30,7 @@
         <div class="summary-item"><span>Upcoming</span><strong data-summary-upcoming>0</strong></div>
         <div class="summary-item"><span>Final</span><strong data-summary-final>0</strong></div>
         <div class="freshness" data-freshness>
-          Loading scores…
+          <span data-sync-status>Loading scores…</span>
           <button class="refresh" type="button" data-refresh>Refresh Scores</button>
         </div>
       </div>

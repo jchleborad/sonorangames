@@ -1,0 +1,18 @@
+.week-nav [data-week-select] {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 36px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.week-nav [data-week-select]:disabled { opacity: .55; cursor: wait; }
+.week-nav [data-week-select]:focus-visible { outline: 3px solid var(--copper); outline-offset: 3px; }
+[data-sync-status][hidden] { display: none; }
+@media (max-width: 620px) {
+  .scoreboard-title-row .week-nav [data-week-select] { width: 100%; }
+}

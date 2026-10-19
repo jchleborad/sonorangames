@@ -24,18 +24,20 @@
   const statPlayers = document.querySelector('[data-home-stat-players]');
   const statWeeks = document.querySelector('[data-home-stat-weeks]');
   const statBest = document.querySelector('[data-home-stat-best]');
+  const statBestDetail = document.querySelector('[data-home-stat-best-detail]');
 
-  function buildApiUrl(action) {
+  function buildApiUrl(action, week = null) {
     const url = new URL(API_URL);
     url.searchParams.set('action', action);
     url.searchParams.set('api_version', API_VERSION);
     url.searchParams.set('competition_id', COMPETITION_ID);
     url.searchParams.set('season', String(SEASON));
+    if (week !== null) url.searchParams.set('week', String(week));
     return url.toString();
   }
 
-  async function fetchJson(action) {
-    const response = await fetch(buildApiUrl(action), {
+  async function fetchJson(action, week = null) {
+    const response = await fetch(buildApiUrl(action, week), {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow'
@@ -171,7 +173,8 @@
       if (winnerName) winnerName.textContent = winner.player_name;
       if (winnerCopy) {
         winnerCopy.textContent =
-          `Week ${week} winner · ${winner.correct} correct · ${winner.incorrect} incorrect`;
+          `Week ${week} winner · ${winner.correct} correct · ${winner.incorrect} incorrect` +
+          (Number(winner.ties) > 0 ? ` · ${winner.ties} tie${Number(winner.ties) === 1 ? '' : 's'}` : '');
       }
     } else {
       if (winnerName) winnerName.textContent = `${winners.length} co-champions`;
@@ -184,12 +187,31 @@
     if (statPlayers) statPlayers.textContent = String(payload.player_count || players.length || 0);
     if (statWeeks) statWeeks.textContent = String(week || 0);
 
-    const best = players.reduce(
-      (highest, player) => Math.max(highest, Number(player.correct || 0)),
-      0
-    );
+  }
 
-    if (statBest) statBest.textContent = String(best);
+  async function renderSeasonBest(latest) {
+    if (statBest) statBest.textContent = '—';
+    if (statBestDetail) statBestDetail.textContent = '';
+    try {
+      const latestWeek = Number(latest.week);
+      if (!Number.isInteger(latestWeek) || latestWeek < 1 || latestWeek > 18) return;
+      const history = [];
+      for (let week = 1; week <= latestWeek; week += 1) {
+        const result = week === latestWeek ? latest : await fetchJson('getWeeklyResults', week);
+        if (Number(result.week) !== week || !Array.isArray(result.players) || !result.players.length) {
+          throw new Error('Completed season history is unavailable.');
+        }
+        if (result.players.every(player => Number(player.pending || 0) === 0)) history.push(result);
+      }
+      const rows = history.flatMap(result => result.players.map(player => ({ ...player, week: result.week })));
+      if (statWeeks) statWeeks.textContent = String(history.length);
+      if (!rows.length) return;
+      const best = rows.slice().sort((a, b) => Number(b.correct || 0) - Number(a.correct || 0) || b.week - a.week)[0];
+      if (statBest) statBest.textContent = String(best.correct);
+      if (statBestDetail) statBestDetail.textContent = `${best.player_name} · Wk ${best.week}`;
+    } catch (error) {
+      if (statBestDetail) statBestDetail.textContent = 'Season record unavailable';
+    }
   }
 
   function renderSeasonStandings(payload) {
@@ -221,7 +243,7 @@
   }
 
   function renderScoreboardFallback() {
-    if (kickoffLabel) kickoffLabel.textContent = 'Week 2 underway';
+    if (kickoffLabel) kickoffLabel.textContent = 'Schedule unavailable';
     if (gameHeading) gameHeading.textContent = 'Current week is underway';
     if (gameCopy) gameCopy.textContent = 'Open the scoreboard for the latest game information.';
   }
@@ -260,6 +282,8 @@
     } else {
       renderSeasonFallback();
     }
+
+    if (weeklyResult.status === 'fulfilled') await renderSeasonBest(weeklyResult.value);
   }
 
   initializeHome();
