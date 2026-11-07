@@ -153,9 +153,11 @@
       refreshButton.textContent = isLoading ? 'Refreshing…' : 'Refresh Scores';
     }
 
-    if (isLoading && syncStatusLabel && !allScoreboardGamesFinal(scoreboard)) {
-      syncStatusLabel.hidden = false;
-      syncStatusLabel.textContent = 'Loading scores…';
+    if (isLoading && syncStatusLabel) {
+      const live = hasLiveScoreboardGames(scoreboard);
+      syncStatusLabel.hidden = !live;
+      syncStatusLabel.textContent = live ? 'Loading scores…' : '';
+      if (!live && freshness) freshness.classList.remove('is-stale');
     }
     if (weekSelect) weekSelect.disabled = isLoading;
   }
@@ -451,16 +453,16 @@
     }
   }
 
-  function allScoreboardGamesFinal(payload) {
-    return Boolean(payload && Array.isArray(payload.games) && payload.games.length &&
-      payload.games.every(game => phaseKey(game) === 'final'));
+  function hasLiveScoreboardGames(payload) {
+    return Boolean(payload && Array.isArray(payload.games) &&
+      payload.games.some(game => phaseKey(game) === 'live'));
   }
 
   function renderFreshness(payload) {
     if (!freshness || !syncStatusLabel) return;
-    const complete = allScoreboardGamesFinal(payload);
-    syncStatusLabel.hidden = complete;
-    if (complete) {
+    const live = hasLiveScoreboardGames(payload);
+    syncStatusLabel.hidden = !live;
+    if (!live) {
       syncStatusLabel.textContent = '';
       freshness.classList.remove('is-stale');
       return;
@@ -848,3 +850,4 @@
 
   initializeScoreboard();
 })();
+
