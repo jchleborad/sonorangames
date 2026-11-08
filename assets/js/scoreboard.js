@@ -22,6 +22,8 @@
   let seasonCurrentWeek = null;
   let scoreboard = null;
   let whoPickedWho = null;
+  let weeklyResults = null;
+  const ranks = window.SGLeaderboardRanks;
   let loading = false;
 
   const seasonLabel = document.querySelector('[data-scoreboard-season]');
@@ -37,6 +39,7 @@
   const playerScoreboardTitle = document.querySelector('[data-player-scoreboard-title]');
   const playerScoreboardSubtitle = document.querySelector('[data-player-scoreboard-subtitle]');
   const playerScoreboardRankHeading = document.querySelector('[data-player-scoreboard-rank-heading]');
+  const playerScoreboardNote = document.querySelector('[data-player-scoreboard-note]');
   const playerScoreboardBody = document.querySelector('[data-player-scoreboard-body]');
 
   const summaryElements = {
@@ -143,6 +146,35 @@
     }
 
     return payload;
+  }
+
+  function isFinalResultsPayload(payload, scorePayload) {
+    if (!allScoreboardGamesFinal(scorePayload) || !payload || payload.ok !== true ||
+        Number(payload.season) !== Number(scorePayload.season) || Number(payload.week) !== Number(scorePayload.week) ||
+        !Array.isArray(payload.players) || !payload.players.length ||
+        Number(payload.player_count) !== payload.players.length) return false;
+    const ids = new Set();
+    for (const player of payload.players) {
+      const id = String(player.player_id || '').trim();
+      if (!id || ids.has(id)) return false;
+      ids.add(id);
+      if (![player.correct, player.incorrect, player.ties, player.pending].every(value => Number.isInteger(value) && value >= 0) ||
+          player.pending !== 0 || player.correct + player.incorrect + player.ties !== scorePayload.games.length ||
+          !Number.isInteger(player.rank) || player.rank < 1 || typeof player.week_win !== 'boolean') return false;
+    }
+    const winners = payload.players.filter(player => player.week_win);
+    return winners.length > 0 && winners.every(player => player.rank === 1);
+  }
+
+  async function fetchFinalResults(scorePayload) {
+    if (!allScoreboardGamesFinal(scorePayload)) return null;
+    try {
+      const payload = await fetchJson('getWeeklyResults', Number(scorePayload.week));
+      return isFinalResultsPayload(payload, scorePayload) ? payload : null;
+    } catch (error) {
+      console.warn('Final weekly results are not available:', error);
+      return null;
+    }
   }
 
   function setLoading(isLoading) {
@@ -453,6 +485,11 @@
     }
   }
 
+  function allScoreboardGamesFinal(payload) {
+    return Boolean(payload && Array.isArray(payload.games) && payload.games.length &&
+      payload.games.every(game => phaseKey(game) === 'final'));
+  }
+
   function hasLiveScoreboardGames(payload) {
     return Boolean(payload && Array.isArray(payload.games) &&
       payload.games.some(game => phaseKey(game) === 'live'));
@@ -626,15 +663,26 @@
     const games = scoreboard && Array.isArray(scoreboard.games) ? scoreboard.games : [];
     const finalCount = finalGameMap().size;
     const totalGames = games.length;
-    const rows = playerScoreboardRows();
+    const official = isFinalResultsPayload(weeklyResults, scoreboard);
+    const allFinal = allScoreboardGamesFinal(scoreboard);
+    const rows = official
+      ? weeklyResults.players.map(player => ({...player, correct:player.correct, incorrect:player.incorrect, pending:player.pending, rank:player.rank}))
+      : playerScoreboardRows();
+    const counts = ranks.rankCounts(rows);
 
     if (playerScoreboardTitle) {
-      playerScoreboardTitle.textContent = `Week ${currentWeek} Live Scoreboard`;
+      playerScoreboardTitle.textContent = `Week ${currentWeek} ${official ? 'Final ' : allFinal ? '' : 'Live '}Scoreboard`;
+    }
+    if (playerScoreboardNote) {
+      playerScoreboardNote.textContent = official
+        ? 'Final results · Weekly winners determined by the pool’s tiebreaker rules.'
+        : allFinal ? 'Results pending · Official weekly winners will appear after grading is complete.'
+        : 'Ranks are provisional until official weekly results are finalized.';
     }
 
     if (playerScoreboardSubtitle) {
       playerScoreboardSubtitle.textContent =
-        `${finalCount} of ${totalGames} game${totalGames === 1 ? '' : 's'} Final`;
+        `${finalCount} of ${totalGames} game${totalGames === 1 ? '' : 's'} Final${allFinal && !official ? ' · Results pending' : ''}`;
     }
 
     if (playerScoreboardRankHeading) {
@@ -663,25 +711,33 @@
 
     playerScoreboardBody.innerHTML = rows.map(row => `
       <tr>
-        <th scope="row">${escapeHtml(row.player_name)}</th>
+        <th scope="row">${escapeHtml(row.player_name)}${official && row.week_win ? '<span class="player-scoreboard-winner">Winner</span>' : ''}</th>
         <td class="is-correct">${row.correct}</td>
         <td class="is-incorrect">${row.incorrect}</td>
         <td>${row.pending}</td>
-        <td class="is-rank">${row.rank}</td>
+        <td class="is-rank">${ranks.rankMarkup(row.rank, counts)}</td>
       </tr>
     `).join('');
   }
 
   async function refreshPlayerScoreboardData() {
+    const selectedWeek = currentWeek;
+    const selectedScoreboard = scoreboard;
     try {
-      const freshWhoPickedWho = await fetchWhoPickedWho(currentWeek);
-
-      if (freshWhoPickedWho) {
-        whoPickedWho = freshWhoPickedWho;
+      const [freshWhoPickedWho, finalResults] = await Promise.all([
+        fetchWhoPickedWho(selectedWeek).catch(() => null),
+        fetchFinalResults(selectedScoreboard)
+      ]);
+      // Ignore a modal request that finished after navigating to another week.
+      if (currentWeek !== selectedWeek || scoreboard !== selectedScoreboard) return;
+      weeklyResults = finalResults;
+      if (freshWhoPickedWho) whoPickedWho = freshWhoPickedWho;
+      if (!freshWhoPickedWho && !isFinalResultsPayload(finalResults, selectedScoreboard)) {
+        throw new Error('Player data unavailable.');
       }
-
       renderPlayerScoreboard();
     } catch (error) {
+      if (currentWeek !== selectedWeek || scoreboard !== selectedScoreboard) return;
       console.error('Player Scoreboard data load failed:', error);
       renderPlayerScoreboard('Player scores are temporarily unavailable. Please close this window and try again.');
     }
@@ -738,6 +794,7 @@
     const priorWeek = currentWeek;
     const priorScoreboard = scoreboard;
     const priorWhoPickedWho = whoPickedWho;
+    const priorWeeklyResults = weeklyResults;
 
     setLoading(true);
     hideMessage();
@@ -751,7 +808,10 @@
         })
       ]);
 
+      // Read official winners only for a completed selected week.
+      const finalResults = await fetchFinalResults(scorePayload);
       whoPickedWho = whoResult;
+      weeklyResults = finalResults;
       renderScoreboard(scorePayload);
     } catch (error) {
       console.error('Sonoran Games scoreboard load failed:', error);
@@ -759,6 +819,7 @@
       currentWeek = priorWeek;
       scoreboard = priorScoreboard;
       whoPickedWho = priorWhoPickedWho;
+      weeklyResults = priorWeeklyResults;
       setBrowserWeek(currentWeek);
 
       if (scoreboard) {
@@ -850,4 +911,5 @@
 
   initializeScoreboard();
 })();
+
 

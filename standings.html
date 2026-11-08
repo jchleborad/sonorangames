@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/assets/css/tokens.css">
   <link rel="stylesheet" href="/assets/css/components.css">
   <link rel="stylesheet" href="/assets/css/site.css">
+  <link rel="stylesheet" href="/assets/css/leaderboard-ranks.css">
 </head>
 <body>
   <header class="site-header">
@@ -134,6 +135,7 @@
           <span class="status status-upcoming" data-season-table-status>Loading</span>
         </div>
 
+        <p class="rank-movement-note" data-rank-movement-note>Weekly movement will appear after standings are verified.</p>
         <p class="season-scroll-cue" data-season-table-scroll-cue>Swipe to see all stats →</p>
 
         <div data-season-table-state>
@@ -147,10 +149,11 @@
         </div>
 
         <div data-season-table-scroll hidden style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <table class="standings" aria-label="2026 Season Standings leaderboard">
+          <table class="standings season-table" aria-label="2026 Season Standings leaderboard">
             <thead>
               <tr>
                 <th scope="col">Rank</th>
+                <th scope="col" class="rank-movement-column" title="Places moved since the previous completed week" aria-label="Rank movement"><span class="rank-movement-heading" aria-hidden="true">↑↓</span></th>
                 <th scope="col">Player</th>
                 <th scope="col">Weeks Won</th>
                 <th scope="col">Correct</th>
@@ -177,6 +180,8 @@
 
   <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><div class="footer-copy"><p>Friendly competition. Serious bragging rights.</p><p>© <span data-copyright-year>2026</span> Project605 LLC. All rights reserved.</p><p>Sonoran Games, including its original content, design, and software, may not be reproduced without permission.</p></div></div></footer>
   <script src="/assets/js/navigation.js"></script>
+  <script src="/assets/js/leaderboard-ranks.js"></script>
   <script src="/assets/js/standings.js"></script>
 </body>
 </html>
+

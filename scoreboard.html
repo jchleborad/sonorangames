@@ -4,6 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Live NFL scores for Sonoran Games."><title>Live Scores · Sonoran Games</title>
   <link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/assets/css/tokens.css"><link rel="stylesheet" href="/assets/css/components.css"><link rel="stylesheet" href="/assets/css/site.css"><link rel="stylesheet" href="/assets/css/scoreboard-who-picked-who.css"><link rel="stylesheet" href="/assets/css/scoreboard-player-scoreboard.css">
   <link rel="stylesheet" href="/assets/css/scoreboard-controls.css">
+  <link rel="stylesheet" href="/assets/css/leaderboard-ranks.css">
 </head>
 <body>
   <header class="site-header"><div class="container nav-wrap"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">☰</button><nav class="nav-links" id="site-nav" data-nav-links><a href="/">Home</a><a href="/scoreboard.html" aria-current="page">Scores</a><a href="/picks.html">Picks</a><a href="/standings.html">Standings</a><a href="/winners.html">Winners</a><a href="/rules.html">Rules</a></nav></div></header>
@@ -88,10 +89,12 @@
           </tbody>
         </table>
       </div>
-      <p class="player-scoreboard-note">Ranks are provisional until all games are final.</p>
+      <p class="player-scoreboard-note" data-player-scoreboard-note>Ranks are provisional until all games are final.</p>
     </section>
   </div>
 
   <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="/"><span class="brand-mark">SG</span><span class="brand-name">Sonoran Games</span></a><div class="footer-copy"><p>Friendly competition. Serious bragging rights.</p><p>© <span data-copyright-year>2026</span> Project605 LLC. All rights reserved.</p><p>Sonoran Games, including its original content, design, and software, may not be reproduced without permission.</p></div></div></footer>
-  <script src="/assets/js/navigation.js"></script><script src="/assets/js/scoreboard.js"></script><script src="/assets/js/scoreboard-auto-refresh.js"></script>
+  <script src="/assets/js/navigation.js"></script><script src="/assets/js/leaderboard-ranks.js"></script>
+  <script src="/assets/js/scoreboard.js"></script><script src="/assets/js/scoreboard-auto-refresh.js"></script>
 </body></html>
+

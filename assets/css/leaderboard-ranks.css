@@ -1,0 +1,22 @@
+/* Rank movement belongs only to Season Standings. */
+.season-table th.rank-movement-column,
+.season-table td.rank-movement-column {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  padding-left: .4rem;
+  padding-right: .4rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.season-table th:nth-child(3),
+.season-table td:nth-child(3) { text-align: left; }
+.season-table td:nth-child(3) { min-width: 155px; }
+.rank-movement { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rank-movement.is-up { color: var(--success); }
+.rank-movement.is-down { color: var(--danger); }
+.rank-movement.is-neutral { color: var(--muted); }
+.rank-movement.is-new { font-size: .72rem; }
+.rank-movement-heading { display: inline-flex; align-items: center; justify-content: center; gap: 1px; font-size: 1.1rem; line-height: 1; }
+.rank-movement-note { margin: 0 0 12px; color: var(--muted); font-size: .78rem; }
+.player-scoreboard-winner { display: inline-flex; align-items: center; gap: .35rem; margin-left: .6rem; color: var(--success); font: 800 .66rem/1.2 var(--font-body); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.player-scoreboard-winner::before { content: ''; width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; }

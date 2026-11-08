@@ -32,6 +32,9 @@
   const seasonTableState = document.querySelector('[data-season-table-state]');
   const seasonTableScroll = document.querySelector('[data-season-table-scroll]');
   const seasonTableBody = document.querySelector('[data-season-table-body]');
+  const movementNote = document.querySelector('[data-rank-movement-note]');
+  const ranks = window.SGLeaderboardRanks;
+
   const snapshotTitle = document.querySelector('[data-snapshot-title]');
   const snapshotCopy = document.querySelector('[data-snapshot-copy]');
 
@@ -169,6 +172,7 @@
   }
 
   function renderWeeklyTable(payload) {
+    const counts = ranks.rankCounts(payload.players);
     weeklyTableBody.innerHTML = payload.players.map(player => {
       const rank = Number(player.rank || 0);
       const winnerLabel = player.week_win
@@ -180,7 +184,7 @@
 
       return `
         <tr${player.week_win ? ' class="is-winner"' : ''}>
-          <td>${rank}</td>
+          <td>${ranks.rankMarkup(rank, counts)}</td>
           <td><strong>${escapeHtml(player.player_name)}</strong>${winnerLabel}</td>
           <td>${Number(player.correct || 0)}</td>
           <td>${Number(player.incorrect || 0)}</td>
@@ -228,17 +232,17 @@
     weeklyTableScroll.hidden = true;
   }
 
-  function buildSeasonStandingsUrl() {
+  function buildSeasonStandingsUrl(action = 'getSeasonStandingsWithMovement') {
     const url = new URL(API_URL);
-    url.searchParams.set('action', 'getSeasonStandings');
+    url.searchParams.set('action', action);
     url.searchParams.set('api_version', API_VERSION);
     url.searchParams.set('competition_id', COMPETITION_ID);
     url.searchParams.set('season', String(SEASON));
     return url.toString();
   }
 
-  async function fetchSeasonStandings() {
-    const response = await fetch(buildSeasonStandingsUrl(), {
+  async function fetchSeasonStandings(legacy = false) {
+    const response = await fetch(buildSeasonStandingsUrl(legacy ? 'getSeasonStandings' : 'getSeasonStandingsWithMovement'), {
       method: 'GET',
       cache: 'no-store',
       redirect: 'follow'
@@ -249,6 +253,8 @@
     }
 
     const payload = await response.json();
+
+    if (!legacy && payload && payload.code === 'UNKNOWN_ACTION') return fetchSeasonStandings(true);
 
     if (!payload || payload.ok !== true || !Array.isArray(payload.players)) {
       throw new Error(
@@ -302,7 +308,29 @@
       `They are tied at Season Score ${formatSeasonScore(leaders[0].cumulative_points)}.`;
   }
 
+  function movementMarkup(player, movement) {
+    if (!movement || movement.available !== true) {
+      return '<span class="rank-movement is-neutral" title="Weekly movement unavailable" aria-label="Weekly movement unavailable">—</span>';
+    }
+    if (player.movement_status === 'new') {
+      return '<span class="rank-movement is-neutral is-new" aria-label="New to the standings">New</span>';
+    }
+    if (player.movement_status === 'baseline') {
+      return '<span class="rank-movement is-neutral" title="First completed week; no previous rank" aria-label="No previous week to compare">—</span>';
+    }
+    const change = player.rank_change;
+    if (!Number.isInteger(change)) return '<span class="rank-movement is-neutral" aria-label="Weekly movement unavailable">—</span>';
+    const amount = Math.abs(change);
+    const label = change === 0 ? 'No change in rank' : `${change > 0 ? 'Up' : 'Down'} ${amount} place${amount === 1 ? '' : 's'}`;
+    return `<span class="rank-movement ${change > 0 ? 'is-up' : change < 0 ? 'is-down' : 'is-neutral'}" title="${label}" aria-label="${label}">${change > 0 ? '↑ ' + amount : change < 0 ? '↓ ' + amount : '—'}</span>`;
+  }
+
   function renderSeasonTable(payload) {
+    const counts = ranks.rankCounts(payload.players);
+    const movement = payload.rank_movement;
+    if (movementNote) movementNote.textContent = movement && movement.available === true
+      ? (movement.previous_week ? `Movement since Week ${movement.previous_week} · Standings through Week ${movement.current_week}` : 'First completed week · No previous rankings to compare.')
+      : 'Weekly movement is temporarily unavailable.';
     seasonTableBody.innerHTML = payload.players.map(player => {
       const leaderLabel = Number(player.rank) === 1
         ? '<span class="status status-final" style="margin-left:8px;vertical-align:middle;">Leader</span>'
@@ -310,7 +338,8 @@
 
       return `
         <tr${Number(player.rank) === 1 ? ' class="is-winner"' : ''}>
-          <td>${Number(player.rank || 0)}</td>
+          <td>${ranks.rankMarkup(player.rank, counts)}</td>
+          <td class="rank-movement-column">${movementMarkup(player, movement)}</td>
           <td><strong>${escapeHtml(player.player_name)}</strong>${leaderLabel}</td>
           <td>${Number(player.weeks_won || 0)}</td>
           <td>${Number(player.total_correct || 0)}</td>
@@ -409,3 +438,4 @@
   initializeWeeklyResults();
   initializeSeasonStandings();
 })();
+
