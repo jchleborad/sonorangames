@@ -24,7 +24,8 @@
   let scoreboard = null;
   let whoPickedWho = null;
   let weeklyResults = null;
-  let scoreboardPlayer = null;
+  let scoreboardPlayer = readScoreboardPlayer();
+  let checkingPlayer = false;
   const ranks = window.SGLeaderboardRanks;
   let loading = false;
 
@@ -35,6 +36,9 @@
   const refreshButton = document.querySelector('[data-refresh]');
   const freshness = document.querySelector('[data-freshness]');
   const message = document.querySelector('[data-scoreboard-message]');
+  const myPicksControls = document.querySelector('[data-my-picks-controls]');
+  const myPicksToggle = document.querySelector('[data-my-picks-toggle]');
+  const myPicksStatus = document.querySelector('[data-my-picks-status]');
   const playerScoreboardButton = document.querySelector('[data-player-scoreboard-open]');
   const playerScoreboardOverlay = document.querySelector('[data-player-scoreboard]');
   const playerScoreboardCloseButton = document.querySelector('[data-player-scoreboard-close]');
@@ -194,6 +198,7 @@
       if (!live && freshness) freshness.classList.remove('is-stale');
     }
     if (weekSelect) weekSelect.disabled = isLoading;
+    renderMyPicksControl();
   }
 
   function showMessage(text) {
@@ -288,13 +293,89 @@
     }
   }
 
+  function hasScoreboardPlayer() {
+    return Boolean(scoreboardPlayer?.playerId &&
+      scoreboardPlayer.season === currentSeason &&
+      scoreboardPlayer.competitionId === COMPETITION_ID);
+  }
+
+  function renderMyPicksControl() {
+    if (!myPicksControls || !myPicksToggle) return;
+    myPicksControls.hidden = !scoreboard || currentWeek !== seasonCurrentWeek;
+    myPicksToggle.disabled = loading || checkingPlayer;
+    myPicksToggle.textContent = checkingPlayer
+      ? 'Checking player link…'
+      : hasScoreboardPlayer() ? 'Hide my picks' : 'Show my picks';
+    if (myPicksControls.hidden && myPicksStatus) myPicksStatus.textContent = '';
+  }
+
+  function setScoreboardPlayer(player) {
+    scoreboardPlayer = player;
+    try {
+      if (player) window.sessionStorage.setItem(SCOREBOARD_PLAYER_KEY, JSON.stringify(player));
+      else window.sessionStorage.removeItem(SCOREBOARD_PLAYER_KEY);
+    } catch (error) { /* Keep the view working for this page even without tab storage. */ }
+    renderMyPicksControl();
+    renderGameCards(scoreboard.games);
+  }
+
+  async function toggleMyPicks() {
+    if (!scoreboard || loading || checkingPlayer || currentWeek !== seasonCurrentWeek) return;
+    if (myPicksStatus) myPicksStatus.textContent = '';
+    if (hasScoreboardPlayer()) {
+      setScoreboardPlayer(null);
+      return;
+    }
+
+    const playerToken = window.SonoranPlayerAccess?.getToken?.();
+    if (!playerToken) {
+      if (myPicksStatus) myPicksStatus.textContent = 'Open your personal Picks link in this browser first.';
+      return;
+    }
+
+    const season = currentSeason;
+    const week = currentWeek;
+    checkingPlayer = true;
+    renderMyPicksControl();
+
+    try {
+      // Verify identity with the same read-only request used by the Picks page.
+      const url = new URL(buildApiUrl('getWeeklyCard', week));
+      url.searchParams.set('player_token', playerToken);
+      const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (!response.ok) throw new Error('Player lookup failed.');
+      const card = await response.json();
+      if (currentSeason !== season || currentWeek !== week || seasonCurrentWeek !== week) return;
+      if (window.SonoranPlayerAccess?.getToken?.() !== playerToken) return;
+
+      const playerId = card?.player?.player_id;
+      if (card?.ok !== true || typeof playerId !== 'string' || !playerId.trim() ||
+          card.competition_id !== COMPETITION_ID || Number(card.season) !== season ||
+          Number(card.week) !== week) {
+        if (myPicksStatus) myPicksStatus.textContent = 'We couldn’t verify your player link. Reopen your personal Picks link and try again.';
+        return;
+      }
+
+      setScoreboardPlayer({ playerId, competitionId: COMPETITION_ID, season });
+      if (myPicksStatus) myPicksStatus.textContent = whoPickedWho
+        ? 'Your picks are marked on Live and Final games after kickoff.'
+        : 'Pick data is temporarily unavailable. Try Refresh Scores.';
+    } catch (error) {
+      if (currentSeason === season && currentWeek === week && myPicksStatus) {
+        myPicksStatus.textContent = 'We couldn’t load your picks. Please try again.';
+      }
+    } finally {
+      checkingPlayer = false;
+      renderMyPicksControl();
+    }
+  }
+
   function myPickHtml(game, side) {
     const phase = phaseKey(game);
     const playerId = scoreboardPlayer?.playerId;
     const team = String(game[`${side}_abbr`] || '').trim().toUpperCase();
-    if (!playerId || !team || (phase !== 'live' && phase !== 'final') ||
-        currentWeek !== seasonCurrentWeek || scoreboardPlayer.season !== currentSeason ||
-        scoreboardPlayer.competitionId !== COMPETITION_ID ||
+    if (!hasScoreboardPlayer() || !team || (phase !== 'live' && phase !== 'final') ||
+        currentWeek !== seasonCurrentWeek ||
         whoPickedWho?.competition_id !== COMPETITION_ID ||
         Number(whoPickedWho.season) !== currentSeason || Number(whoPickedWho.week) !== currentWeek) return '';
 
@@ -556,9 +637,14 @@
     freshness.classList.toggle('is-stale', syncStatus.stale);
   }
 
+  function renderGameCards(games) {
+    renderSection('live', games.filter(game => phaseKey(game) === 'live'));
+    renderSection('upcoming', games.filter(game => phaseKey(game) === 'upcoming'));
+    renderSection('final', games.filter(game => phaseKey(game) === 'final'));
+  }
+
   function renderScoreboard(payload) {
     scoreboard = payload;
-    scoreboardPlayer = readScoreboardPlayer();
     currentSeason = Number(payload.season) || currentSeason;
     currentWeek = clampWeek(Number(payload.week) || currentWeek);
 
@@ -567,9 +653,8 @@
     renderHeader(payload);
     renderSummary(payload);
     renderFreshness(payload);
-    renderSection('live', games.filter(game => phaseKey(game) === 'live'));
-    renderSection('upcoming', games.filter(game => phaseKey(game) === 'upcoming'));
-    renderSection('final', games.filter(game => phaseKey(game) === 'final'));
+    renderMyPicksControl();
+    renderGameCards(games);
 
     hideMessage();
     setBrowserWeek(currentWeek);
@@ -918,6 +1003,7 @@
 
   window.addEventListener('resize', () => updateOverflowCues());
 
+  myPicksToggle?.addEventListener('click', toggleMyPicks);
   if (weekSelect) weekSelect.addEventListener('change', () => {
     const selectedWeek = positiveInteger(weekSelect.value);
     if (!loading && selectedWeek && selectedWeek !== currentWeek) loadScoreboard(selectedWeek);

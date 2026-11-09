@@ -16,3 +16,24 @@
 .team-name .scoreboard-my-pick.is-correct { color: var(--success); }
 .team-name .scoreboard-my-pick.is-incorrect { color: var(--danger); }
 .team-name .scoreboard-my-pick > [aria-hidden] { color: inherit; font-size: inherit; }
+
+.scoreboard-my-picks-controls:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .75rem;
+  margin-block: -.4rem;
+  font-size: .88rem;
+}
+
+.scoreboard-my-picks-toggle {
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--navy-2);
+  text-decoration: underline;
+}
+
+.scoreboard-my-picks-toggle:disabled { cursor: wait; }
+.scoreboard-my-picks-status { color: var(--muted); }
