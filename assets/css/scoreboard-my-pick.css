@@ -1,0 +1,18 @@
+.team-name.has-my-pick {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: .5rem;
+  row-gap: .2rem;
+}
+
+.team-name .scoreboard-my-pick {
+  color: var(--navy-2);
+  font-size: .7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.team-name .scoreboard-my-pick.is-correct { color: var(--success); }
+.team-name .scoreboard-my-pick.is-incorrect { color: var(--danger); }
+.team-name .scoreboard-my-pick > [aria-hidden] { color: inherit; font-size: inherit; }

@@ -4,6 +4,7 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbw9dkf50_ofoiG4K00IYWNn_Tf61cBOst67vw26h7ZhSajNHbyT3H5oNqV_va31GpKzuw/exec';
   const API_VERSION = 'v1';
   const COMPETITION_ID = 'official_2026';
+  const SCOREBOARD_PLAYER_KEY = 'sonoran-games:scoreboard-player';
   const PLAYER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Phoenix';
 
   const params = new URLSearchParams(window.location.search);
@@ -357,7 +358,7 @@
       : 'Picks are currently closed by the commissioner.';
 
     main.innerHTML = `
-      <section class="picks-hero"><div class="container picks-hero-row"><div><p class="eyebrow">${card.season} Regular Season</p><h1 class="display picks-title">Make your Week ${card.week} picks</h1><p class="picks-intro">Choose one winner for every matchup. Each game stays open until its scheduled kickoff.</p></div><div class="player-card" aria-label="Current player"><span class="player-avatar" aria-hidden="true">${escapeHtml(initials(playerName))}</span><div><small>Picking as</small><strong>${escapeHtml(playerName)}</strong></div></div></div></section>
+      <section class="picks-hero"><div class="container picks-hero-row"><div><p class="eyebrow">${card.season} Regular Season</p><h1 class="display picks-title">Make your Week ${card.week} picks</h1><p class="picks-intro">Choose one winner for every matchup. Each game stays open until its scheduled kickoff.</p><p class="picks-intro"><a href="/scoreboard.html" data-my-picks-on-scores>See my picks on Scores →</a></p></div><div class="player-card" aria-label="Current player"><span class="player-avatar" aria-hidden="true">${escapeHtml(initials(playerName))}</span><div><small>Picking as</small><strong>${escapeHtml(playerName)}</strong></div></div></div></section>
       <div class="container picks-layout"><div class="picks-column">
         <section class="card picks-progress-card" aria-labelledby="progress-title"><div class="picks-progress-copy"><p class="eyebrow">Your Week ${card.week} card</p><h2 class="display" id="progress-title"><span data-selected-count>0</span> of ${card.games.length} selected</h2><p data-progress-message>Loading your progress…</p></div><div class="progress-ring" data-progress-ring style="--progress:0%"><strong data-progress-percent>0%</strong><span>Complete</span></div><div class="progress-track" aria-hidden="true"><span data-progress-bar style="width:0%"></span></div></section>
         <div class="pick-notice" role="note"><span class="notice-clock" aria-hidden="true">◷</span><div><strong>Games lock individually</strong><p>${lockedCount ? `${lockedCount} game${lockedCount === 1 ? ' is' : 's are'} already locked. ` : ''}You may change every open pick until that matchup begins.</p></div></div>
@@ -576,6 +577,17 @@
   }
 
   function bindInteractions() {
+    main.querySelector('[data-my-picks-on-scores]')?.addEventListener('click', event => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      try {
+        window.sessionStorage.setItem(SCOREBOARD_PLAYER_KEY, JSON.stringify({
+          playerId: card.player.player_id,
+          competitionId: card.competition_id,
+          season: Number(card.season)
+        }));
+      } catch (error) { /* Scores still works without tab storage. */ }
+    });
+
     document.querySelectorAll('[data-game]').forEach(gameElement => {
       gameElement.querySelectorAll('.team-choice').forEach(button =>
         button.addEventListener('click', () => selectTeam(gameElement, button))
@@ -624,6 +636,9 @@
 
   async function initialize() {
     renderLoading();
+    if (urlPlayerToken) {
+      try { window.sessionStorage.removeItem(SCOREBOARD_PLAYER_KEY); } catch (error) { /* no-op */ }
+    }
     if (!playerToken) return renderFatal('This address does not include a player token.');
     try {
       card = await loadWeeklyCard();

@@ -4,6 +4,7 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbw9dkf50_ofoiG4K00IYWNn_Tf61cBOst67vw26h7ZhSajNHbyT3H5oNqV_va31GpKzuw/exec';
   const API_VERSION = 'v1';
   const COMPETITION_ID = 'official_2026';
+  const SCOREBOARD_PLAYER_KEY = 'sonoran-games:scoreboard-player';
   const DEFAULT_SEASON = 2026;
   const MIN_WEEK = 1;
   const MAX_WEEK = 18;
@@ -23,6 +24,7 @@
   let scoreboard = null;
   let whoPickedWho = null;
   let weeklyResults = null;
+  let scoreboardPlayer = null;
   const ranks = window.SGLeaderboardRanks;
   let loading = false;
 
@@ -278,10 +280,55 @@
     return ` <span class="scoreboard-team-record">(${record.wins}–${record.losses}${record.ties > 0 ? `–${record.ties}` : ''})</span>`;
   }
 
+  function readScoreboardPlayer() {
+    try {
+      return JSON.parse(window.sessionStorage.getItem(SCOREBOARD_PLAYER_KEY) || 'null');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function myPickHtml(game, side) {
+    const phase = phaseKey(game);
+    const playerId = scoreboardPlayer?.playerId;
+    const team = String(game[`${side}_abbr`] || '').trim().toUpperCase();
+    if (!playerId || !team || (phase !== 'live' && phase !== 'final') ||
+        currentWeek !== seasonCurrentWeek || scoreboardPlayer.season !== currentSeason ||
+        scoreboardPlayer.competitionId !== COMPETITION_ID ||
+        whoPickedWho?.competition_id !== COMPETITION_ID ||
+        Number(whoPickedWho.season) !== currentSeason || Number(whoPickedWho.week) !== currentWeek) return '';
+
+    const revealedGame = whoGameFor(game.game_id);
+    if (revealedGame?.revealed !== true || !Array.isArray(revealedGame.picks)) return '';
+    const pick = revealedGame.picks.find(row => row.player_id === playerId);
+    if (!pick || String(pick.pick_team || '').trim().toUpperCase() !== team) return '';
+
+    let state = 'pending';
+    let icon = '○';
+    let outcome = '';
+    if (phase === 'final' && pick.game_final === true) {
+      const winner = String(game.winner || '').trim().toUpperCase();
+      const scores = [game.away_score, game.home_score];
+      const tied = winner === 'TIE' || (!winner &&
+        scores.every(score => typeof score === 'number' && Number.isFinite(score)) &&
+        scores[0] === scores[1]);
+      if (tied) {
+        return '<span class="scoreboard-my-pick">My pick · Tie</span>';
+      }
+      if (typeof pick.pick_correct === 'boolean') {
+        state = pick.pick_correct ? 'correct' : 'incorrect';
+        icon = pick.pick_correct ? '✓' : '×';
+        outcome = pick.pick_correct ? ' · Correct' : ' · Incorrect';
+      }
+    }
+    return `<span class="scoreboard-my-pick is-${state}"><span aria-hidden="true">${icon}</span> My pick${outcome ? `<span class="sr-only">${outcome}</span>` : ''}</span>`;
+  }
+
   function teamRowHtml(game, side, options = {}) {
     const abbreviation = escapeHtml(game[`${side}_abbr`] || '');
     const teamName = escapeHtml(game[`${side}_team`] || '');
     const score = game[`${side}_score`];
+    const myPick = myPickHtml(game, side);
     const hasScore = options.showScore && score !== '' && score !== null && score !== undefined;
     const winnerClass =
       options.winner &&
@@ -292,7 +339,7 @@
     return `
       <div class="team-row${winnerClass}">
         <span class="team-mark">${abbreviation}</span>
-        <div class="team-name"><strong>${teamName}${scoreboardRecordHtml(game[`${side}_record`])}</strong></div>
+        <div class="team-name${myPick ? ' has-my-pick' : ''}"><strong>${teamName}${scoreboardRecordHtml(game[`${side}_record`])}</strong>${myPick}</div>
         ${hasScore ? `<strong class="team-score">${escapeHtml(score)}</strong>` : ''}
       </div>
     `;
@@ -511,6 +558,7 @@
 
   function renderScoreboard(payload) {
     scoreboard = payload;
+    scoreboardPlayer = readScoreboardPlayer();
     currentSeason = Number(payload.season) || currentSeason;
     currentWeek = clampWeek(Number(payload.week) || currentWeek);
 
