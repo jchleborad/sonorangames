@@ -218,6 +218,7 @@
 
   function saveDraft() {
     if (!card.picks_open) return;
+    draftDirty = true;
     const picks = {};
     card.games.forEach(game => { if (game.pick_team) picks[String(game.game_id)] = game.pick_team; });
     try {
@@ -226,11 +227,10 @@
         picks,
         tiebreaker: document.querySelector('[data-tiebreaker]').value.trim()
       }));
-      draftDirty = true;
-      updateSaveStatus();
     } catch (error) {
       // Draft storage must never block a player from submitting.
     }
+    updateState();
   }
 
   function clearDraft() {
@@ -245,8 +245,8 @@
     if (draftDirty) {
       status.className = 'card-save-status is-draft';
       status.innerHTML =
-        '<strong>Draft saved on this device</strong>' +
-        '<span>Save your picks anytime. Finish the rest before each game locks.</span>';
+        '<strong>Unsaved changes</strong>' +
+        '<span>Save your changes before each game locks.</span>';
       return;
     }
 
@@ -294,7 +294,7 @@
     status.className = 'card-save-status';
     status.innerHTML =
       '<strong>Not submitted yet</strong>' +
-      '<span>Your changes will be saved as a draft on this device.</span>';
+      '<span>Select your teams, then save your picks.</span>';
   }
 
   function teamRecordHtml(record) {
@@ -326,7 +326,6 @@
         ${renderTeam(game, 'away')}<span class="matchup-at">AT</span>${renderTeam(game, 'home')}
       </div>
       ${!selected && !locked ? '<p class="pick-needed">Pick a winner</p>' : ''}
-      ${locked && selected ? `<div class="locked-result"><span>Your pick: <strong>${escapeHtml(game.pick_team)}</strong></span><span class="status status-final">Locked</span></div>` : ''}
     </article>`;
   }
 
@@ -358,7 +357,7 @@
       : 'Picks are currently closed by the commissioner.';
 
     main.innerHTML = `
-      <section class="picks-hero"><div class="container picks-hero-row"><div><p class="eyebrow">${card.season} Regular Season</p><h1 class="display picks-title">Make your Week ${card.week} picks</h1><p class="picks-intro">Choose one winner for every matchup. Each game stays open until its scheduled kickoff.</p><p class="picks-intro"><a href="/scoreboard.html" data-my-picks-on-scores>See my picks on Scores for Week ${escapeHtml(card.week)}</a></p></div><div class="player-card" aria-label="Current player"><span class="player-avatar" aria-hidden="true">${escapeHtml(initials(playerName))}</span><div><small>Picking as</small><strong>${escapeHtml(playerName)}</strong></div></div></div></section>
+      <section class="picks-hero"><div class="container picks-hero-row"><div><p class="eyebrow">${card.season} Regular Season</p><h1 class="display picks-title">Make your Week ${card.week} picks</h1><p class="picks-intro">Choose one winner for every matchup. Each game stays open until its scheduled kickoff.</p></div><div class="player-card" aria-label="Current player"><span class="player-avatar" aria-hidden="true">${escapeHtml(initials(playerName))}</span><div><small>Picking as</small><strong>${escapeHtml(playerName)}</strong></div></div></div></section>
       <div class="container picks-layout"><div class="picks-column">
         <section class="card picks-progress-card" aria-labelledby="progress-title"><div class="picks-progress-copy"><p class="eyebrow">Your Week ${card.week} card</p><h2 class="display" id="progress-title"><span data-selected-count>0</span> of ${card.games.length} selected</h2><p data-progress-message>Loading your progress…</p></div><div class="progress-ring" data-progress-ring style="--progress:0%"><strong data-progress-percent>0%</strong><span>Complete</span></div><div class="progress-track" aria-hidden="true"><span data-progress-bar style="width:0%"></span></div></section>
         <div class="pick-notice" role="note"><span class="notice-clock" aria-hidden="true">◷</span><div><strong>Games lock individually</strong><p>${lockedCount ? `${lockedCount} game${lockedCount === 1 ? ' is' : 's are'} already locked. ` : ''}You may change every open pick until that matchup begins.</p></div></div>
@@ -408,6 +407,7 @@
     const missing = Math.max(total - selected, 0);
     const tieValue = document.querySelector('[data-tiebreaker]').value.trim();
     const ready = missing === 0 && tieValue !== '';
+    const submitted = Boolean(card.submitted_at_utc) && !draftDirty;
     const percent = total ? Math.round((selected / total) * 100) : 0;
 
     document.querySelectorAll('[data-selected-count], [data-review-count]').forEach(element => {
@@ -422,7 +422,9 @@
       missing
         ? `${missing} pick${missing === 1 ? '' : 's'} left.`
         : tieValue
-          ? 'Your card is complete and ready to submit.'
+          ? submitted ? 'Your complete card has been submitted.'
+            : draftDirty && card.submitted_at_utc ? 'You have unsaved changes. Submit your updated card.'
+            : 'Your card is complete and ready to submit.'
           : 'All games selected. Add your tiebreaker.';
 
     let needed = '';
@@ -431,27 +433,33 @@
     else if (!tieValue) needed = 'Your tiebreaker score.';
 
     document.querySelectorAll('[data-submit-warning]').forEach(warning => {
+      warning.hidden = submitted && ready;
       warning.classList.toggle('is-ready', ready);
       warning.innerHTML = ready
-        ? `<strong>Ready for kickoff</strong><p>All ${total} games and your tiebreaker are complete.</p>`
+        ? `<strong>${card.submitted_at_utc ? 'Ready to submit changes' : 'Ready to submit'}</strong><p>All ${total} games and your tiebreaker are complete.</p>`
         : `<strong>Still needed</strong><p>${needed}</p>`;
     });
 
     const submitLabel =
-      ready
-        ? 'Submit my picks →'
+      submitted
+        ? ready ? 'Card submitted' : 'Picks saved'
+        : ready
+        ? card.submitted_at_utc ? 'Submit updated picks →' : 'Submit my picks →'
         : selected > 0
           ? 'Save my picks →'
           : 'Start my card →';
 
     document.querySelectorAll('[data-submit-picks]').forEach(button => {
       button.textContent = submitLabel;
+      button.disabled = !card.picks_open || submitted;
     });
+    updateSaveStatus();
   }
 
   function selectTeam(gameElement, button) {
     const game = card.games.find(item => String(item.game_id) === gameElement.dataset.gameId);
     if (!game || game.locked || !card.picks_open) return;
+    if (game.pick_team === button.dataset.team) return;
     game.pick_team = button.dataset.team;
     gameElement.querySelectorAll('.team-choice').forEach(choice => {
       choice.classList.toggle('is-selected', choice === button);
@@ -577,17 +585,6 @@
   }
 
   function bindInteractions() {
-    main.querySelector('[data-my-picks-on-scores]')?.addEventListener('click', event => {
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      try {
-        window.sessionStorage.setItem(SCOREBOARD_PLAYER_KEY, JSON.stringify({
-          playerId: card.player.player_id,
-          competitionId: card.competition_id,
-          season: Number(card.season)
-        }));
-      } catch (error) { /* Scores still works without tab storage. */ }
-    });
-
     document.querySelectorAll('[data-game]').forEach(gameElement => {
       gameElement.querySelectorAll('.team-choice').forEach(button =>
         button.addEventListener('click', () => selectTeam(gameElement, button))
