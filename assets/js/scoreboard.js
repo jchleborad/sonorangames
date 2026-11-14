@@ -4,7 +4,6 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbw9dkf50_ofoiG4K00IYWNn_Tf61cBOst67vw26h7ZhSajNHbyT3H5oNqV_va31GpKzuw/exec';
   const API_VERSION = 'v1';
   const COMPETITION_ID = 'official_2026';
-  const SCOREBOARD_PLAYER_KEY = 'sonoran-games:scoreboard-player';
   const DEFAULT_SEASON = 2026;
   const MIN_WEEK = 1;
   const MAX_WEEK = 18;
@@ -24,10 +23,13 @@
   let scoreboard = null;
   let whoPickedWho = null;
   let weeklyResults = null;
-  let scoreboardPlayer = readScoreboardPlayer();
+  let scoreboardPlayer = null;
   let checkingPlayer = false;
   let upcomingPicks = null;
-  let loadingUpcomingPicks = null;
+  let personalRequest = null;
+  let attemptedPlayerToken = null;
+  let verifiedPlayerToken = null;
+  let personalStatus = '';
   const ranks = window.SGLeaderboardRanks;
   let loading = false;
 
@@ -39,7 +41,6 @@
   const freshness = document.querySelector('[data-freshness]');
   const message = document.querySelector('[data-scoreboard-message]');
   const myPicksControls = document.querySelector('[data-my-picks-controls]');
-  const myPicksToggle = document.querySelector('[data-my-picks-toggle]');
   const myPicksStatus = document.querySelector('[data-my-picks-status]');
   const playerScoreboardButton = document.querySelector('[data-player-scoreboard-open]');
   const playerScoreboardOverlay = document.querySelector('[data-player-scoreboard]');
@@ -287,44 +288,30 @@
     return ` <span class="scoreboard-team-record">(${record.wins}–${record.losses}${record.ties > 0 ? `–${record.ties}` : ''})</span>`;
   }
 
-  function readScoreboardPlayer() {
-    try {
-      return JSON.parse(window.sessionStorage.getItem(SCOREBOARD_PLAYER_KEY) || 'null');
-    } catch (error) {
-      return null;
-    }
+  function savedPlayerToken() {
+    try { return window.SonoranPlayerAccess?.getToken?.() || ''; }
+    catch (error) { return ''; }
   }
 
   function hasScoreboardPlayer() {
     return Boolean(scoreboardPlayer?.playerId &&
+      verifiedPlayerToken && verifiedPlayerToken === savedPlayerToken() &&
       scoreboardPlayer.season === currentSeason &&
       scoreboardPlayer.competitionId === COMPETITION_ID);
   }
 
   function renderMyPicksControl() {
-    if (!myPicksControls || !myPicksToggle) return;
-    myPicksControls.hidden = !scoreboard || currentWeek !== seasonCurrentWeek;
-    myPicksToggle.disabled = loading || checkingPlayer;
-    myPicksToggle.textContent = checkingPlayer
-      ? 'Checking player link…'
-      : hasScoreboardPlayer() ? 'Hide my picks' : 'Show my picks';
-    if (myPicksControls.hidden && myPicksStatus) myPicksStatus.textContent = '';
-  }
-
-  function setScoreboardPlayer(player, card = null) {
-    scoreboardPlayer = player;
-    upcomingPicks = card ? savedUpcomingPicks(card) : null;
-    loadingUpcomingPicks = null;
-    try {
-      if (player) window.sessionStorage.setItem(SCOREBOARD_PLAYER_KEY, JSON.stringify(player));
-      else window.sessionStorage.removeItem(SCOREBOARD_PLAYER_KEY);
-    } catch (error) { /* Keep the view working for this page even without tab storage. */ }
-    renderMyPicksControl();
-    renderGameCards(scoreboard.games);
+    if (!myPicksControls || !myPicksStatus) return;
+    const recognized = hasScoreboardPlayer();
+    const text = recognized
+      ? `Showing picks for ${scoreboardPlayer.displayName}`
+      : checkingPlayer ? 'Loading your picks…' : savedPlayerToken() ? personalStatus : '';
+    myPicksControls.hidden = !scoreboard || !text;
+    myPicksStatus.textContent = text;
   }
 
   async function fetchMyWeeklyCard(playerToken, season, week) {
-    // The existing private Picks endpoint returns only this player's saved card.
+    // Always authenticate against the active week, including when viewing history.
     const url = new URL(buildApiUrl('getWeeklyCard', week));
     url.searchParams.set('player_token', playerToken);
     const response = await fetch(url, { method: 'GET', cache: 'no-store' });
@@ -336,106 +323,93 @@
       Number(card.week) === week && Array.isArray(card.games) ? card : null;
   }
 
-  function savedUpcomingPicks(card) {
-    return {
-      season: Number(card.season),
-      week: Number(card.week),
-      playerId: card.player.player_id,
-      byGame: new Map(card.games.map(game => [
-        String(game.game_id),
-        String(game.pick_team || '').trim().toUpperCase()
-      ]))
-    };
-  }
-
   function hasUpcomingPicksForView() {
     return upcomingPicks?.season === currentSeason && upcomingPicks.week === currentWeek &&
       upcomingPicks.playerId === scoreboardPlayer?.playerId;
   }
 
-  async function refreshUpcomingMyPicks(force = false) {
-    if (!hasScoreboardPlayer() || currentWeek !== seasonCurrentWeek ||
-        !scoreboard?.games.some(game => phaseKey(game) === 'upcoming')) return;
-    if (loadingUpcomingPicks || (!force && hasUpcomingPicksForView())) return;
-
-    const token = window.SonoranPlayerAccess?.getToken?.();
-    if (!token) {
-      if (upcomingPicks) {
-        upcomingPicks = null;
-        renderSection('upcoming', scoreboard.games.filter(game => phaseKey(game) === 'upcoming'));
-      }
-      return;
-    }
-    const request = {};
-    loadingUpcomingPicks = request;
-    const player = scoreboardPlayer;
-    const season = currentSeason;
-    const week = currentWeek;
-    let card = null;
-    try {
-      card = await fetchMyWeeklyCard(token, season, week);
-    } catch (error) { /* A private lookup failure must not interrupt Scores. */ }
-    if (loadingUpcomingPicks !== request) return;
-    loadingUpcomingPicks = null;
-    if (scoreboardPlayer !== player || currentSeason !== season ||
-        currentWeek !== week || seasonCurrentWeek !== week) return;
-
-    upcomingPicks = window.SonoranPlayerAccess?.getToken?.() === token &&
-      card?.player.player_id === player.playerId
-      ? savedUpcomingPicks(card)
-      : { season, week, playerId: player.playerId, byGame: new Map() };
-    renderSection('upcoming', scoreboard.games.filter(game => phaseKey(game) === 'upcoming'));
+  function renderPersonalPicks() {
+    renderMyPicksControl();
+    if (scoreboard) renderGameCards(scoreboard.games);
   }
 
-  async function toggleMyPicks() {
-    if (!scoreboard || loading || checkingPlayer || currentWeek !== seasonCurrentWeek) return;
-    if (myPicksStatus) myPicksStatus.textContent = '';
-    if (hasScoreboardPlayer()) {
-      setScoreboardPlayer(null);
-      return;
-    }
-
-    const playerToken = window.SonoranPlayerAccess?.getToken?.();
-    if (!playerToken) {
-      if (myPicksStatus) myPicksStatus.textContent = 'Open your personal Picks link in this browser first.';
-      return;
-    }
-
+  async function refreshPersonalPicks(force = false) {
+    if (!scoreboard || !seasonCurrentWeek) return;
+    const token = savedPlayerToken();
     const season = currentSeason;
-    const week = currentWeek;
-    checkingPlayer = true;
-    renderMyPicksControl();
+    const activeWeek = seasonCurrentWeek;
+    const requestMatches = request => request && request.token === token &&
+      request.season === season && request.week === activeWeek;
 
-    try {
-      const card = await fetchMyWeeklyCard(playerToken, season, week);
-      if (currentSeason !== season || currentWeek !== week || seasonCurrentWeek !== week) return;
-      if (window.SonoranPlayerAccess?.getToken?.() !== playerToken) return;
-
-      if (!card) {
-        if (myPicksStatus) myPicksStatus.textContent = 'We couldn’t verify your player link. Reopen your personal Picks link and try again.';
-        return;
-      }
-
-      setScoreboardPlayer({ playerId: card.player.player_id, competitionId: COMPETITION_ID, season }, card);
-      if (myPicksStatus) myPicksStatus.textContent = 'Your saved picks are marked on this week’s games.';
-    } catch (error) {
-      if (currentSeason === season && currentWeek === week && myPicksStatus) {
-        myPicksStatus.textContent = 'We couldn’t load your picks. Please try again.';
-      }
-    } finally {
+    if (requestMatches(personalRequest)) return;
+    if (!token) {
+      personalRequest = null;
+      scoreboardPlayer = null;
+      upcomingPicks = null;
+      verifiedPlayerToken = attemptedPlayerToken = null;
       checkingPlayer = false;
-      renderMyPicksControl();
+      personalStatus = '';
+      renderPersonalPicks();
+      return;
     }
+    if (!force && attemptedPlayerToken === token && scoreboardPlayer?.season === season &&
+        upcomingPicks?.week === activeWeek) return;
+
+    const request = { token, season, week: activeWeek };
+    personalRequest = request;
+    attemptedPlayerToken = token;
+    scoreboardPlayer = null;
+    upcomingPicks = null;
+    verifiedPlayerToken = null;
+    checkingPlayer = true;
+    personalStatus = '';
+    renderPersonalPicks();
+
+    let card = null;
+    let failed = false;
+    try {
+      card = await fetchMyWeeklyCard(token, season, activeWeek);
+    } catch (error) { failed = true; }
+    if (personalRequest !== request) return;
+    personalRequest = null;
+    checkingPlayer = false;
+    if (savedPlayerToken() !== token || currentSeason !== season || seasonCurrentWeek !== activeWeek) {
+      renderPersonalPicks();
+      return;
+    }
+
+    if (card) {
+      verifiedPlayerToken = token;
+      scoreboardPlayer = {
+        playerId: card.player.player_id,
+        displayName: String(card.player.display_name || card.player.player_id),
+        season, competitionId: COMPETITION_ID
+      };
+      upcomingPicks = {
+        season, week: activeWeek, playerId: card.player.player_id,
+        byGame: new Map(card.games.map(game => [
+          String(game.game_id), String(game.pick_team || '').trim().toUpperCase()
+        ]))
+      };
+    } else {
+      // Remember this attempt without storing credentials or private picks on disk.
+      scoreboardPlayer = { season };
+      upcomingPicks = { week: activeWeek };
+      personalStatus = failed
+        ? 'Personal picks are temporarily unavailable. Try Refresh Scores.'
+        : 'Open your personal Picks link again to display your picks.';
+    }
+    renderPersonalPicks();
   }
 
   function myPickHtml(game, side) {
     const phase = phaseKey(game);
     const team = String(game[`${side}_abbr`] || '').trim().toUpperCase();
-    if (!hasScoreboardPlayer() || !team || currentWeek !== seasonCurrentWeek) return '';
+    if (!hasScoreboardPlayer() || !team) return '';
 
     let pickedTeam;
     if (phase === 'upcoming') {
-      if (!hasUpcomingPicksForView()) return '';
+      if (currentWeek !== seasonCurrentWeek || !hasUpcomingPicksForView()) return '';
       pickedTeam = upcomingPicks.byGame.get(String(game.game_id));
     } else if (phase === 'live' || phase === 'final') {
       if (whoPickedWho?.competition_id !== COMPETITION_ID ||
@@ -991,7 +965,7 @@
       whoPickedWho = whoResult;
       weeklyResults = finalResults;
       renderScoreboard(scorePayload);
-      void refreshUpcomingMyPicks(options.refreshMyPicks);
+      void refreshPersonalPicks(options.refreshMyPicks);
     } catch (error) {
       console.error('Sonoran Games scoreboard load failed:', error);
 
@@ -1048,11 +1022,15 @@
   });
 
   window.addEventListener('resize', () => updateOverflowCues());
+  window.addEventListener('storage', event => {
+    if (event.key === null || event.key === 'sonoran-games:player-token') {
+      void refreshPersonalPicks(true);
+    }
+  });
   window.addEventListener('pageshow', event => {
-    if (event.persisted) void refreshUpcomingMyPicks(true);
+    if (event.persisted) void refreshPersonalPicks(true);
   });
 
-  myPicksToggle?.addEventListener('click', toggleMyPicks);
   if (weekSelect) weekSelect.addEventListener('change', () => {
     const selectedWeek = positiveInteger(weekSelect.value);
     if (!loading && selectedWeek && selectedWeek !== currentWeek) loadScoreboard(selectedWeek);
